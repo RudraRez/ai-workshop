@@ -1,0 +1,314 @@
+# Build Manifest — AI Tutor Module
+# ----------------------------------------------------------------------------
+# Single source of truth for what this build produces and how the pieces
+# connect. /execute reads this to dispatch the right agents to the right paths.
+# Update this file alongside doc/PLAN.md whenever scope changes.
+
+module:
+  name: tutor
+  displayName: "SKEP AI Tutor"
+  port: 5094
+  basePath: /api/v1/tutor
+  tablePrefix: tutor_
+  wsNamespace: /tutor
+  status: draft
+  description: >
+    AI-powered tutoring module for SKEP communities. Members start tutor
+    sessions, chat with an AI tutor in real-time, and receive transcripts
+    they can revisit. OWNERs and ADMINs can configure tutor behavior and
+    review usage.
+
+# ----------------------------------------------------------------------------
+# Applications
+# ----------------------------------------------------------------------------
+apps:
+  backend:
+    path: apps/backend
+    framework: nestjs
+    frameworkVersion: "11.x"
+    language: typescript
+    entry: src/main.ts
+    rootModule: src/app.module.ts
+    deploy: railway
+    healthcheck: /health
+    readyCheck: /ready
+  frontend:
+    path: apps/frontend
+    framework: next
+    frameworkVersion: "15.x"
+    language: typescript
+    router: app
+    deploy: vercel
+    devPort: 3000
+
+# ----------------------------------------------------------------------------
+# Shared packages
+# ----------------------------------------------------------------------------
+packages:
+  - name: "@skep/platform-core"
+    path: packages/platform-core
+    purpose: JWT guards, tenancy, event bus, LMS client, response envelope
+    exportsImplementing:
+      - PlatformCoreModule
+      - JwtStrategy
+      - JwtAuthGuard
+      - WsJwtGuard
+      - RolesGuard
+      - "@Public() / @Roles() / @CurrentUser() / @TenantSchema()"
+      - SchemaManagerService
+      - TenantQueryService
+      - EventBusService
+      - LmsClient (+ MockLmsClient, HttpLmsClient)
+      - HttpExceptionFilter
+      - RequestIdInterceptor
+      - ResponseEnvelopeInterceptor
+      - HealthController
+      - OnboardingController
+      - createTestJwt
+  - name: "@skep/shared"
+    path: packages/shared
+    purpose: Zod schemas + types shared between FE and BE
+
+# ----------------------------------------------------------------------------
+# Feature modules (backend)
+# ----------------------------------------------------------------------------
+backendModules:
+  - name: me
+    path: apps/backend/src/modules/me
+    endpoints:
+      - "GET /api/v1/tutor/me"
+    events: []
+    rolesAllowed: [OWNER, ADMIN, MODERATOR, MEMBER, GUEST]
+
+  - name: sessions
+    path: apps/backend/src/modules/sessions
+    endpoints:
+      - "POST   /api/v1/tutor/sessions"
+      - "GET    /api/v1/tutor/sessions"
+      - "GET    /api/v1/tutor/sessions/:id"
+      - "PATCH  /api/v1/tutor/sessions/:id"
+      - "DELETE /api/v1/tutor/sessions/:id"
+    tables: [tutor_sessions]
+    events:
+      - tutor.session.started
+      - tutor.session.ended
+      - tutor.session.deleted
+    rolesAllowed: [OWNER, ADMIN, MEMBER]
+
+  - name: messages
+    path: apps/backend/src/modules/messages
+    endpoints:
+      - "POST /api/v1/tutor/sessions/:id/messages"
+      - "GET  /api/v1/tutor/sessions/:id/messages"
+    tables: [tutor_messages]
+    events:
+      - tutor.message.sent
+      - tutor.message.answered
+    rolesAllowed: [OWNER, ADMIN, MEMBER]
+
+  - name: transcripts
+    path: apps/backend/src/modules/transcripts
+    endpoints:
+      - "GET /api/v1/tutor/sessions/:id/transcript"
+    tables: [tutor_transcripts]
+    events: []
+    rolesAllowed: [OWNER, ADMIN, MEMBER]
+
+  - name: settings
+    path: apps/backend/src/modules/settings
+    endpoints:
+      - "GET  /api/v1/tutor/settings"
+      - "PUT  /api/v1/tutor/settings"
+    tables: [tutor_settings]
+    events:
+      - tutor.settings.updated
+    rolesAllowed: [OWNER, ADMIN]
+
+  - name: tutor-gateway
+    path: apps/backend/src/modules/tutor-gateway
+    type: websocket
+    namespace: /tutor
+    clientToServer:
+      - "tutor:ask"
+    serverToClient:
+      - "tutor:token"       # streaming token from AI
+      - "tutor:answer"      # completed answer
+      - "tutor:session"     # session state change
+    rolesAllowed: [OWNER, ADMIN, MEMBER]
+
+# ----------------------------------------------------------------------------
+# Frontend routes
+# ----------------------------------------------------------------------------
+frontendRoutes:
+  - path: /login
+    group: public
+    kind: page
+  - path: /
+    group: public
+    kind: page
+    note: Marketing / redirect to /sessions if authed
+  - path: /sessions
+    group: authed
+    kind: page
+    calls: ["GET /api/v1/tutor/sessions"]
+  - path: /sessions/new
+    group: authed
+    kind: page
+    calls: ["POST /api/v1/tutor/sessions"]
+  - path: /sessions/[id]
+    group: authed
+    kind: page
+    calls:
+      - "GET /api/v1/tutor/sessions/:id"
+      - "WS  /tutor  (tutor:ask, tutor:token, tutor:answer)"
+  - path: /sessions/[id]/transcript
+    group: authed
+    kind: page
+    calls: ["GET /api/v1/tutor/sessions/:id/transcript"]
+  - path: /settings
+    group: authed
+    kind: page
+    roles: [OWNER, ADMIN]
+    calls:
+      - "GET /api/v1/tutor/settings"
+      - "PUT /api/v1/tutor/settings"
+
+# ----------------------------------------------------------------------------
+# Database (per-community schema)
+# ----------------------------------------------------------------------------
+database:
+  sharedSchema: public
+  sharedTables:
+    - schema_registry
+    - schema_migrations_global
+  perCommunitySchema: "<community_code_lowercased>"
+  perCommunityTables:
+    - tutor_sessions
+    - tutor_messages
+    - tutor_transcripts
+    - tutor_settings
+    - schema_migrations
+  migrationsPath: apps/backend/src/modules/*/migrations/NNN_*.sql
+
+# ----------------------------------------------------------------------------
+# Events catalog summary (detail: doc/EVENT-CATALOG.md)
+# ----------------------------------------------------------------------------
+events:
+  published:
+    - tutor.session.started
+    - tutor.session.ended
+    - tutor.session.deleted
+    - tutor.message.sent
+    - tutor.message.answered
+    - tutor.settings.updated
+  subscribed:
+    - platform.community.onboarded
+    - platform.community.suspended
+    - platform.community.archived
+
+# ----------------------------------------------------------------------------
+# External services
+# ----------------------------------------------------------------------------
+externalServices:
+  - name: postgres
+    role: primary datastore
+    local: docker-compose
+    prod: Railway Postgres
+  - name: redis
+    role: event bus + cache + queue backend
+    local: docker-compose
+    prod: Railway Redis
+  - name: skep-main-platform
+    role: JWT issuer (validate only, never issue)
+    mode: validated via SKEP_JWT_SECRET
+  - name: lms-java
+    role: usage reporting + limits
+    mode: mock in dev (LMS_MODE=mock), http in prod
+  - name: ai-provider
+    role: AI tutor completions (streaming)
+    provider: TBD — block on product decision (Anthropic | OpenAI | Azure)
+
+# ----------------------------------------------------------------------------
+# Environment variables (source of truth — keep in sync with .env.example)
+# ----------------------------------------------------------------------------
+env:
+  backend:
+    required:
+      - SKEP_JWT_SECRET
+      - SKEP_JWT_ISSUER           # = skep-api
+      - DATABASE_URL
+      - REDIS_URL
+      - ONBOARDING_WEBHOOK_SECRET
+      - MODULE_NAME               # = tutor
+      - MODULE_PORT               # = 5094
+      - CORS_ORIGINS
+      - AI_PROVIDER_API_KEY       # depends on provider choice
+    optional:
+      - DATABASE_POOL_SIZE        # default 20
+      - LMS_MODE                  # default mock
+      - LMS_BASE_URL
+      - LOG_LEVEL                 # default info
+  frontend:
+    required:
+      - NEXTAUTH_URL
+      - NEXTAUTH_SECRET
+      - NEXT_PUBLIC_API_BASE_URL  # http://localhost:5094
+      - NEXT_PUBLIC_WS_URL        # ws://localhost:5094/tutor
+
+# ----------------------------------------------------------------------------
+# Quality gate thresholds (from CONSTRAINTS.md)
+# ----------------------------------------------------------------------------
+qualityGates:
+  typeErrors: 0
+  lintErrors: 0
+  coverageOverall: 60
+  coverageAuth: 100
+  coverageTenantIsolation: 100
+  apiP95LatencyMs: 300
+  dbP95LatencyMs: 100
+  feLcpMs: 2500
+  owaspCritical: 0
+  owaspHigh: 0
+
+# ----------------------------------------------------------------------------
+# Build phases (detail: doc/PLAN.md)
+# ----------------------------------------------------------------------------
+phases:
+  - id: 0
+    name: Foundation
+    gate: "/approve phase-0"
+  - id: 1
+    name: Authentication integration
+    gate: "/approve phase-1"
+  - id: 2
+    name: "Core — sessions + messages"
+    gate: "/approve phase-2"
+  - id: 3
+    name: "Core — transcripts + settings"
+    gate: "/approve phase-3"
+  - id: 4
+    name: "WebSocket tutor stream"
+    gate: "/approve phase-4"
+  - id: 5
+    name: Quality gate
+    gate: "/approve phase-5"
+  - id: 6
+    name: Ship
+    gate: "/approve phase-6"
+
+# ----------------------------------------------------------------------------
+# Open decisions — must be resolved before corresponding phase starts
+# ----------------------------------------------------------------------------
+openDecisions:
+  - id: ai-provider
+    question: Anthropic Claude, OpenAI, or Azure OpenAI for AI tutor?
+    blocks: [phase-2, phase-4]
+  - id: transcript-storage
+    question: Store full transcripts in DB, or offload long transcripts to object storage?
+    blocks: [phase-3]
+  - id: rate-limiting
+    question: Per-user message quota in free tier — what's the number?
+    blocks: [phase-2]
+  - id: content-moderation
+    question: Moderate user prompts before sending to AI? Which service?
+    blocks: [phase-2]
