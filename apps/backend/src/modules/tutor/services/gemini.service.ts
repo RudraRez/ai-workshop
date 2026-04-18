@@ -50,15 +50,17 @@ export class GeminiService implements OnModuleInit {
   ): Promise<string> {
     const ai = this.ensureReady();
     try {
-      const res = await ai.models.generateContent({
-        model: this.modelName,
-        contents: prompt,
-        config: {
-          systemInstruction: opts?.systemInstruction,
-          maxOutputTokens: opts?.maxOutputTokens ?? 1024,
-          temperature: 0.4,
-        },
-      });
+      const res = await this.withRetry(() =>
+        ai.models.generateContent({
+          model: this.modelName,
+          contents: prompt,
+          config: {
+            systemInstruction: opts?.systemInstruction,
+            maxOutputTokens: opts?.maxOutputTokens ?? 1024,
+            temperature: 0.4,
+          },
+        }),
+      );
       const text = res.text ?? '';
       if (!text) throw new Error('Empty Gemini response');
       return text;
@@ -68,7 +70,7 @@ export class GeminiService implements OnModuleInit {
       );
       throw new ServiceUnavailableException({
         code: 'TUTOR_AI_PROVIDER_UNAVAILABLE',
-        message: 'Gemini request failed',
+        message: `Gemini request failed: ${(err as Error).message}`,
       });
     }
   }
@@ -78,27 +80,79 @@ export class GeminiService implements OnModuleInit {
     opts?: { systemInstruction?: string; maxOutputTokens?: number },
   ): Promise<T> {
     const ai = this.ensureReady();
+    let rawText = '';
     try {
-      const res = await ai.models.generateContent({
-        model: this.modelName,
-        contents: prompt,
-        config: {
-          systemInstruction: opts?.systemInstruction,
-          maxOutputTokens: opts?.maxOutputTokens ?? 2048,
-          temperature: 0.5,
-          responseMimeType: 'application/json',
-        },
-      });
-      const text = res.text ?? '';
-      return JSON.parse(text) as T;
+      const res = await this.withRetry(() =>
+        ai.models.generateContent({
+          model: this.modelName,
+          contents: prompt,
+          config: {
+            systemInstruction: opts?.systemInstruction,
+            maxOutputTokens: opts?.maxOutputTokens ?? 2048,
+            temperature: 0.5,
+            responseMimeType: 'application/json',
+          },
+        }),
+      );
+      rawText = res.text ?? '';
+      if (!rawText) {
+        const finish = res.candidates?.[0]?.finishReason;
+        const blocked = res.promptFeedback?.blockReason;
+        this.logger.error(
+          `Gemini returned empty JSON (finishReason=${finish ?? 'n/a'}, blockReason=${blocked ?? 'n/a'})`,
+        );
+        throw new Error(
+          `Empty response (finishReason=${finish ?? 'n/a'}${blocked ? `, blockReason=${blocked}` : ''})`,
+        );
+      }
+      return JSON.parse(this.unwrapJson(rawText)) as T;
     } catch (err) {
+      const snippet = rawText
+        ? ` | raw: ${rawText.slice(0, 300).replace(/\s+/g, ' ')}`
+        : '';
       this.logger.error(
-        `Gemini generateJson failed: ${(err as Error).message}`,
+        `Gemini generateJson failed: ${(err as Error).message}${snippet}`,
       );
       throw new ServiceUnavailableException({
         code: 'TUTOR_AI_PROVIDER_UNAVAILABLE',
-        message: 'Gemini JSON generation failed',
+        message: `Gemini JSON generation failed: ${(err as Error).message}`,
       });
     }
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>): Promise<T> {
+    const maxAttempts = 4;
+    const baseDelayMs = 800;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (!this.isRetryable(err) || attempt === maxAttempts) throw err;
+        const delay = baseDelayMs * 2 ** (attempt - 1) + Math.random() * 250;
+        this.logger.warn(
+          `Gemini transient error (attempt ${attempt}/${maxAttempts}): ${(err as Error).message} — retrying in ${Math.round(delay)}ms`,
+        );
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+    throw lastErr;
+  }
+
+  private isRetryable(err: unknown): boolean {
+    const msg = (err as Error)?.message ?? '';
+    if (/\b(503|429|500|502|504)\b/.test(msg)) return true;
+    if (/UNAVAILABLE|RESOURCE_EXHAUSTED|DEADLINE_EXCEEDED|INTERNAL/i.test(msg))
+      return true;
+    if (/overloaded|high demand|try again later/i.test(msg)) return true;
+    return false;
+  }
+
+  private unwrapJson(text: string): string {
+    const trimmed = text.trim();
+    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+    if (fenced) return fenced[1].trim();
+    return trimmed;
   }
 }

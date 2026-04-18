@@ -43,13 +43,13 @@ export function LessonPlayer({ durationSec, videoUrl }: LessonPlayerProps) {
 
 function YoutubePlayer({ videoId }: { videoId: string }) {
   return (
-    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-black">
+    <div className="aspect-video w-full shrink-0 bg-black">
       <iframe
         src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`}
         title="Lesson video"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
-        className="aspect-video h-full max-h-full w-full max-w-full border-0"
+        className="h-full w-full border-0"
       />
     </div>
   );
@@ -70,9 +70,9 @@ function MockPlayer({ durationSec }: { durationSec: number }) {
   const percent = (elapsed / durationSec) * 100;
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 flex-col">
+    <div className="relative flex w-full shrink-0 flex-col">
       <div
-        className="relative flex flex-1 items-center justify-center overflow-hidden bg-[#0a0a0f]"
+        className="relative flex aspect-video items-center justify-center overflow-hidden bg-[#0a0a0f]"
         style={{
           backgroundImage:
             "radial-gradient(ellipse at center, rgba(140,100,255,0.08) 0%, rgba(10,10,15,1) 55%)",

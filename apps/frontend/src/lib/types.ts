@@ -116,3 +116,60 @@ export type LessonForAi = {
   context?: string;
   videoUrl?: string;
 };
+
+export type ResourceTone = "red" | "blue" | "purple" | "emerald" | "orange";
+
+export type LessonResource = {
+  id: string;
+  title: string;
+  subtitle: string;
+  kind: "download" | "link";
+  tone: ResourceTone;
+  sizeKb?: number;
+};
+
+export type LessonInstructor = {
+  id: string;
+  name: string;
+  role: string;
+  avatarInitials: string;
+  rating: number;
+  students: number;
+  courses: number;
+  bio: string;
+  expertise: string[];
+  message: string;
+};
+
+export type UpNextVideo = {
+  id: string;
+  title: string;
+  module: string;
+  durationLabel: string;
+};
+
+export type BookmarkTone = "blue" | "violet" | "amber" | "emerald";
+
+export type LessonBookmark = {
+  id: string;
+  timestamp: string;
+  title: string;
+  moduleLabel: string;
+  tone: BookmarkTone;
+};
+
+export type LessonNote = {
+  id: string;
+  body: string;
+  createdAt: string;
+};
+
+export type DiscussionThread = {
+  id: string;
+  authorName: string;
+  avatarInitials: string;
+  createdAt: string;
+  body: string;
+  replies: number;
+  likes: number;
+};

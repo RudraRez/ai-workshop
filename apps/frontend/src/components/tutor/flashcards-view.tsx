@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   ArrowLeft,
   Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -171,15 +172,25 @@ export function FlashcardsView({ lesson, onBack }: FlashcardsViewProps) {
             <ChevronLeft className="size-4" />
             Prev
           </button>
-          <button
-            type="button"
-            onClick={() => goTo(idx + 1)}
-            disabled={idx === total - 1}
-            className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-card disabled:hover:text-muted-foreground"
-          >
-            Next
-            <ChevronRight className="size-4" />
-          </button>
+          {idx === total - 1 ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/15 text-sm font-semibold text-violet-200 transition-colors hover:bg-violet-500/25"
+            >
+              <CheckCheck className="size-4" />
+              Finish
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => goTo(idx + 1)}
+              className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              Next
+              <ChevronRight className="size-4" />
+            </button>
+          )}
         </div>
         <div className="flex items-center justify-between pt-1 text-xs">
           <p>

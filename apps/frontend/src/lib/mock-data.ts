@@ -1,9 +1,14 @@
 import type {
+  DiscussionThread,
   Flashcard,
   Lesson,
+  LessonBookmark,
+  LessonInstructor,
+  LessonResource,
   QuickAction,
   StudioGenerator,
   TutorMessage,
+  UpNextVideo,
   UsageCounter,
 } from "./types";
 
@@ -115,3 +120,152 @@ export async function fakeDelay<T>(value: T, ms = 400): Promise<T> {
   await new Promise((r) => setTimeout(r, ms));
   return value;
 }
+
+export const mockResources: LessonResource[] = [
+  {
+    id: "res-1",
+    title: "Claude Code: Complete Cheat Sheet",
+    subtitle: "All CLI commands, flags, and config options in one page",
+    kind: "download",
+    tone: "red",
+    sizeKb: 142,
+  },
+  {
+    id: "res-2",
+    title: "Anthropic Claude Code Docs",
+    subtitle: "Official documentation for Claude Code CLI",
+    kind: "link",
+    tone: "blue",
+  },
+  {
+    id: "res-3",
+    title: "Spec-Driven Development Template",
+    subtitle: "Starter spec template used in this module",
+    kind: "download",
+    tone: "purple",
+    sizeKb: 89,
+  },
+  {
+    id: "res-4",
+    title: "Agent Loop Research Paper (Yao et al.)",
+    subtitle: "The original ReAct paper that inspired modern agent design",
+    kind: "link",
+    tone: "emerald",
+  },
+  {
+    id: "res-5",
+    title: "Module 3 Reading: The Rise of AI Agents",
+    subtitle: "Supplementary reading for this module",
+    kind: "download",
+    tone: "orange",
+    sizeKb: 230,
+  },
+];
+
+export const mockInstructor: LessonInstructor = {
+  id: "instr-1",
+  name: "Karan Mehta",
+  role: "Senior AI Engineer & SKEP Lead Instructor",
+  avatarInitials: "KM",
+  rating: 4.9,
+  students: 28430,
+  courses: 6,
+  bio: 'Karan is a former staff engineer at a Series B AI startup and has been building production AI systems since 2021. He specialises in agentic architectures, tool-use patterns, and helping developers cross the gap from "prompting" to real system design.',
+  expertise: [
+    "LLM Fine-tuning",
+    "Agent Architectures",
+    "Claude Code",
+    "System Design",
+    "RAG Pipelines",
+  ],
+  message:
+    '"Welcome to Module 3! This is where things get really exciting — we stop talking about AI theoretically and start building. The Claude Code demo in this lesson is something I\'ve used in real production projects, so everything you see here is battle-tested. If you have questions, drop them in the discussion. I personally read every comment. See you in the next lesson!"',
+};
+
+export const mockUpNext: UpNextVideo[] = [
+  {
+    id: "up-1",
+    title: "Claude Skills: Build Your First AI Assistant",
+    module: "Module 3",
+    durationLabel: "13:58",
+  },
+  {
+    id: "up-2",
+    title: "Claude Code: Data Analysis Without Spreadsheets",
+    module: "Module 3",
+    durationLabel: "18:44",
+  },
+  {
+    id: "up-3",
+    title: "Claude MCP Tutorial: Give Claude Superpowers",
+    module: "Module 3",
+    durationLabel: "12:55",
+  },
+  {
+    id: "up-4",
+    title: "Claude Cowork: Complete Step-by-Step Guide",
+    module: "Module 3",
+    durationLabel: "29:16",
+  },
+];
+
+export const mockBookmarks: LessonBookmark[] = [
+  {
+    id: "bm-1",
+    timestamp: "03:20",
+    title: "CLI setup — remember to set ANTHROPIC_API_KEY in .env",
+    moduleLabel: "M3 · L1",
+    tone: "blue",
+  },
+  {
+    id: "bm-2",
+    timestamp: "08:45",
+    title: "First agent reads the codebase — amazing demo moment",
+    moduleLabel: "M3 · L1",
+    tone: "violet",
+  },
+  {
+    id: "bm-3",
+    timestamp: "14:10",
+    title: "Tool call loop explanation — review this before the quiz",
+    moduleLabel: "M3 · L1",
+    tone: "amber",
+  },
+  {
+    id: "bm-4",
+    timestamp: "00:00",
+    title: "Overview of Spec-Driven Dev — great intro",
+    moduleLabel: "M1 · L1",
+    tone: "emerald",
+  },
+];
+
+export const mockDiscussions: DiscussionThread[] = [
+  {
+    id: "disc-1",
+    authorName: "Priya Shah",
+    avatarInitials: "PS",
+    createdAt: "2 hours ago",
+    body: "Anyone else getting a 'command not found' when running claude init? Had to add ~/.local/bin to PATH before it worked on Ubuntu 22.04.",
+    replies: 4,
+    likes: 12,
+  },
+  {
+    id: "disc-2",
+    authorName: "Daniel Okafor",
+    avatarInitials: "DO",
+    createdAt: "Yesterday",
+    body: "The Socratic style took some getting used to — it doesn't just hand you the answer. Honestly I retained way more this way. Took about 20 minutes to finish the demo.",
+    replies: 8,
+    likes: 27,
+  },
+  {
+    id: "disc-3",
+    authorName: "Mei Lin",
+    avatarInitials: "ML",
+    createdAt: "3 days ago",
+    body: "Is there a way to pipe Claude Code's output to a file? Trying to capture the agent's reasoning for a code review deck.",
+    replies: 2,
+    likes: 5,
+  },
+];

@@ -49,7 +49,7 @@ export class FlashcardsService {
     const raw = await this.gemini.generateJson<{ cards?: RawCard[] }>(prompt, {
       systemInstruction:
         'You produce study flashcards for online learners. Always respond with valid JSON.',
-      maxOutputTokens: 2048,
+      maxOutputTokens: 4096,
     });
 
     const cards = Array.isArray(raw?.cards) ? raw.cards : [];

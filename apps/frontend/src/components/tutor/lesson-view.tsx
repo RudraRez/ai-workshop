@@ -5,6 +5,8 @@ import { Sparkles, X } from "lucide-react";
 import { TopBar } from "./top-bar";
 import { LessonPlayer } from "./lesson-player";
 import { LessonFooter } from "./lesson-footer";
+import { LessonDetailsTabs } from "./lesson-details-tabs";
+import { UpNext } from "./up-next";
 import { AiPanel } from "./ai-panel";
 import type { LessonForAi } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,7 @@ export function LessonView() {
       <TopBar courseTitle={lesson.courseTitle} />
 
       <div className="flex min-h-0 flex-1">
-        <main className="flex min-h-0 flex-1 flex-col">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto scrollbar-thin">
           <LessonPlayer
             durationSec={lesson.durationSec}
             videoUrl={lesson.videoUrl}
@@ -43,6 +45,8 @@ export function LessonView() {
             lessonNumber={lesson.lessonNumber}
             durationMin={Math.round(lesson.durationSec / 60)}
           />
+          <LessonDetailsTabs />
+          <UpNext />
         </main>
 
         <aside
