@@ -43,6 +43,7 @@ export function AudioOverviewView({ lesson, onBack }: AudioOverviewViewProps) {
     setPlaying(false);
     setElapsed(0);
     setDuration(latest?.durationSec ?? 0);
+    audioRef.current?.load();
   }, [latest?.id, latest?.durationSec]);
 
   const togglePlay = () => {
@@ -87,6 +88,7 @@ export function AudioOverviewView({ lesson, onBack }: AudioOverviewViewProps) {
         {audioSrc ? (
           <>
             <audio
+              key={latest!.id}
               ref={audioRef}
               src={audioSrc}
               preload="metadata"
