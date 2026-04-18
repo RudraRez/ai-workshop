@@ -213,6 +213,10 @@ Returns the authenticated user derived from the JWT + registry lookup.
   }
   ```
 
+### 6.1a `GET /api/v1/tutor/me/usage`
+
+Drives the `12/20 left` badge in the AI Tutor header. Full schema in §6.8.
+
 ### 6.2 Sessions
 
 #### `POST /api/v1/tutor/sessions` — Start a session
@@ -220,8 +224,13 @@ Returns the authenticated user derived from the JWT + registry lookup.
 - **Roles:** `OWNER`, `ADMIN`, `MEMBER`
 - **Body** (`CreateSessionDto`):
   ```json
-  { "topic": "Calculus — limits", "context": "I am stuck on ε-δ proofs" }
+  {
+    "topic": "Claude Code — agents",
+    "context": "I am stuck on how tools are invoked",
+    "lessonId": "lesson-uuid"
+  }
   ```
+  `lessonId` is **optional** (sessions can be free-form), but the product surface generally attaches the current `lessonId` so chat is lesson-aware.
 - **201 body:** full `Session` (see schema in §9.2)
 - **Side effects:** LMS limit check → insert `tutor_sessions` → LMS usage report → emit `tutor.session.started`
 - **Errors:** `TUTOR_SESSION_QUOTA_EXCEEDED` (403), `VALIDATION_FAILED` (400)
@@ -325,7 +334,182 @@ Returns the authenticated user derived from the JWT + registry lookup.
 
 ---
 
-## 6.6 Resource Template (for any future resource)
+### 6.6 Course Tab (read-only proxy)
+
+Lesson content is owned by SKEP main platform. This module keeps a local mirror (populated from `platform.course.lesson.*` events) to serve the Course tab without cross-module HTTP calls.
+
+#### `GET /api/v1/tutor/course/lessons` — List lessons (current community)
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER`
+- **Query:** `cursor?`, `limit?` (max 50, default 20), `courseId?`
+- **200 body:** `{ items: Lesson[], nextCursor: string | null }`
+
+#### `GET /api/v1/tutor/course/lessons/:id` — Lesson detail
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER`
+- **200 body:** `Lesson` with `contentHash` (clients compare to refresh the lesson context client-side when content drifts).
+
+`Lesson` shape:
+
+```json
+{
+  "id": "lesson-uuid",
+  "courseId": "course-uuid",
+  "title": "Claude Code: Build Your First AI Agent",
+  "summary": "...",
+  "contentHash": "sha256-...",
+  "durationSec": 1800,
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+### 6.7 Studio Tab — Generators
+
+All Studio endpoints accept a `lessonId` in the body. They return a **job** object which is either already `completed` (for synchronous-enough generators) or `pending|running` (caller polls or subscribes to events).
+
+#### Common `StudioJob` shape
+
+```json
+{
+  "id": "job-uuid",
+  "type": "audio-overview" | "flashcards",
+  "lessonId": "lesson-uuid",
+  "status": "pending" | "running" | "completed" | "failed",
+  "progress": 0.42,
+  "input": { "...": "generator-specific" },
+  "outputRef": "audio-overview-id-or-deck-id-or-null",
+  "error": { "code": "...", "message": "..." } | null,
+  "createdAt": "...",
+  "updatedAt": "...",
+  "completedAt": "..." | null
+}
+```
+
+#### `POST /api/v1/tutor/studio/audio-overviews` — Request audio
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER`
+- **Headers:** `Idempotency-Key: <UUID>` required.
+- **Body** (`CreateAudioOverviewDto`):
+  ```json
+  {
+    "lessonId": "lesson-uuid",
+    "language": "hi-IN",              // one of en-IN, hi-IN, bn-IN, gu-IN, kn-IN, ml-IN, mr-IN, pa-IN, ta-IN, te-IN
+    "voiceStyle": "narrator"           // optional; narrator | conversational | friendly
+  }
+  ```
+- **202 body:** `StudioJob` with `status: "pending"` (async — TTS takes seconds to minutes).
+- **Errors:** `TUTOR_STUDIO_LANGUAGE_UNSUPPORTED` (400), `TUTOR_STUDIO_QUOTA_EXCEEDED` (403), `TUTOR_LESSON_NOT_FOUND` (404).
+- **Side effects:** insert `tutor_studio_jobs` row → enqueue BullMQ job → emit `tutor.studio.audio.requested`.
+
+#### `GET /api/v1/tutor/studio/audio-overviews` — List
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER` (MEMBER sees only own)
+- **Query:** `cursor?`, `limit?`, `lessonId?`, `language?`, `status?`
+- **200 body:** `{ items: AudioOverview[], nextCursor: string | null }`
+
+#### `GET /api/v1/tutor/studio/audio-overviews/:id` — Get one
+
+- **Roles:** `OWNER`, `ADMIN`, or job owner
+- **200 body:** `AudioOverview` including signed playback URL:
+  ```json
+  {
+    "id": "...",
+    "jobId": "...",
+    "lessonId": "...",
+    "language": "hi-IN",
+    "audioUrl": "https://r2.signed.example/...?exp=...",
+    "audioUrlExpiresAt": "2026-04-18T11:00:00.000Z",
+    "transcript": "...",
+    "durationSec": 312,
+    "voiceStyle": "narrator",
+    "createdAt": "..."
+  }
+  ```
+
+#### `POST /api/v1/tutor/studio/flashcards` — Generate deck
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER`
+- **Headers:** `Idempotency-Key: <UUID>` required.
+- **Body** (`CreateFlashcardDeckDto`):
+  ```json
+  {
+    "lessonId": "lesson-uuid",
+    "count": 15,                      // 5–50, default 10
+    "difficulty": "mixed",            // easy | medium | hard | mixed
+    "tags": ["claude", "agents"]      // optional
+  }
+  ```
+- **202 body:** `StudioJob` (usually completes within 10–30s; clients can poll or subscribe).
+- **Errors:** `TUTOR_STUDIO_QUOTA_EXCEEDED` (403), `TUTOR_LESSON_NOT_FOUND` (404), `VALIDATION_FAILED` (400).
+
+#### `GET /api/v1/tutor/studio/flashcards` — List decks
+
+- **Roles:** `OWNER`, `ADMIN`, `MEMBER` (MEMBER sees only own)
+- **Query:** `cursor?`, `limit?`, `lessonId?`, `status?`
+- **200 body:** `{ items: FlashcardDeck[], nextCursor: string | null }`
+
+#### `GET /api/v1/tutor/studio/flashcards/:id` — Get deck + cards
+
+- **Roles:** `OWNER`, `ADMIN`, or deck owner
+- **200 body:**
+  ```json
+  {
+    "id": "deck-uuid",
+    "jobId": "...",
+    "lessonId": "...",
+    "title": "Claude Code: Agents — 15 flashcards",
+    "difficulty": "mixed",
+    "cardCount": 15,
+    "cards": [
+      { "id": "...", "front": "What is an agent?", "back": "A ...", "hint": null, "tags": ["agents"] }
+    ],
+    "createdAt": "..."
+  }
+  ```
+
+#### `DELETE /api/v1/tutor/studio/<kind>/:id` — Soft-delete
+
+- **Roles:** `OWNER`, `ADMIN`, or owner
+- **204** no body
+- **Side effects:** `UPDATE ... SET deleted_at = NOW()`, emit `tutor.studio.<kind>.deleted`. Audio files in R2 are retained for 30 days (scheduled purge).
+
+#### Roadmap generators — NOT implemented this build
+
+The following Studio generators are listed for completeness but are **not** exposed as endpoints in this build. Calling them returns `501 NOT_IMPLEMENTED` with error code `TUTOR_GENERATOR_NOT_AVAILABLE`.
+
+| Planned path | Generator | Status |
+|---|---|---|
+| `POST /api/v1/tutor/studio/slide-decks` | Slide Deck (BETA) | Roadmap |
+| `POST /api/v1/tutor/studio/video-overviews` | Video Overview | Roadmap |
+| `POST /api/v1/tutor/studio/mind-maps` | Mind Map | Roadmap |
+| `POST /api/v1/tutor/studio/reports` | Reports | Roadmap |
+| `POST /api/v1/tutor/studio/quizzes` | Quiz | Roadmap |
+| `POST /api/v1/tutor/studio/infographics` | Infographic (BETA) | Roadmap |
+| `POST /api/v1/tutor/studio/data-tables` | Data Table | Roadmap |
+| `POST /api/v1/tutor/studio/notes` | Add Note | Roadmap |
+
+### 6.8 Usage Counter
+
+#### `GET /api/v1/tutor/me/usage`
+
+Drives the `12/20 left` badge visible in the AI Tutor tab header.
+
+- **Roles:** any authenticated
+- **200 body:**
+  ```json
+  {
+    "windowStartsAt": "2026-04-18T00:00:00.000Z",
+    "windowEndsAt":   "2026-04-19T00:00:00.000Z",
+    "tutorMessages":    { "used": 8,  "limit": 20 },
+    "studioAudio":      { "used": 1,  "limit": 5 },
+    "studioFlashcards": { "used": 2,  "limit": 10 }
+  }
+  ```
+
+---
+
+## 6.9 Resource Template (for any future resource)
 
 > Reference shape — follow this for any new AI Tutor resource we add later.
 
@@ -476,6 +660,12 @@ See `SKEP-DELTA.md §Error Code Naming`. Module-prefixed codes live here:
 | `TUTOR_MESSAGE_QUOTA_EXCEEDED` | 403 | Daily message cap hit. |
 | `TUTOR_AI_PROVIDER_UNAVAILABLE` | 502 | Upstream AI call failed after retries. |
 | `TUTOR_MODERATION_BLOCKED` | 403 | Prompt blocked by moderation layer. |
+| `TUTOR_LESSON_NOT_FOUND` | 404 | `lessonId` not in local mirror. |
+| `TUTOR_STUDIO_JOB_NOT_FOUND` | 404 | Job id missing or belongs to another community. |
+| `TUTOR_STUDIO_QUOTA_EXCEEDED` | 403 | Per-day studio generation cap hit. |
+| `TUTOR_STUDIO_LANGUAGE_UNSUPPORTED` | 400 | Audio language code not in supported set. |
+| `TUTOR_STUDIO_TTS_UNAVAILABLE` | 502 | TTS provider failed after retries. |
+| `TUTOR_GENERATOR_NOT_AVAILABLE` | 501 | Roadmap generator (slide-decks, quizzes, etc.) not in this build. |
 
 ---
 
@@ -518,7 +708,13 @@ packages/shared/src/schemas/
 ├── session.ts                   # SessionSchema, CreateSessionSchema, UpdateSessionSchema
 ├── message.ts                   # MessageSchema, SendMessageSchema
 ├── transcript.ts
-└── settings.ts
+├── settings.ts
+├── lesson.ts                    # LessonSchema
+├── usage.ts                     # UsageCounterSchema
+└── studio/
+    ├── job.ts                   # StudioJobSchema
+    ├── audio-overview.ts        # AudioOverviewSchema, CreateAudioOverviewSchema, LanguageEnum
+    └── flashcards.ts            # FlashcardDeckSchema, FlashcardSchema, CreateFlashcardDeckSchema
 ```
 
 ### 9.2 `Session`
@@ -582,7 +778,109 @@ export const settingsSchema = z.object({
   systemPrompt: z.string().max(10000),
   maxTokensPerAnswer: z.number().int().min(128).max(8192),
   memberDailyMessageCap: z.number().int().min(0).max(10000),
+  memberDailyAudioCap: z.number().int().min(0).max(1000).default(5),
+  memberDailyFlashcardsCap: z.number().int().min(0).max(1000).default(10),
   moderationEnabled: z.boolean(),
+});
+```
+
+### 9.6 `Lesson` (Course tab)
+
+```ts
+export const lessonSchema = z.object({
+  id: z.string().uuid(),
+  courseId: z.string().uuid(),
+  title: z.string().max(300),
+  summary: z.string().max(2000).nullable(),
+  contentHash: z.string(),
+  durationSec: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+```
+
+### 9.7 Studio schemas
+
+```ts
+export const studioLanguageEnum = z.enum([
+  'en-IN', 'hi-IN', 'bn-IN', 'gu-IN', 'kn-IN',
+  'ml-IN', 'mr-IN', 'pa-IN', 'ta-IN', 'te-IN',
+]);
+
+export const studioJobSchema = z.object({
+  id: z.string().uuid(),
+  type: z.enum(['audio-overview', 'flashcards']),
+  lessonId: z.string().uuid(),
+  status: z.enum(['pending', 'running', 'completed', 'failed']),
+  progress: z.number().min(0).max(1),
+  input: z.record(z.unknown()),
+  outputRef: z.string().uuid().nullable(),
+  error: z.object({ code: z.string(), message: z.string() }).nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  completedAt: z.string().datetime().nullable(),
+});
+
+export const audioOverviewSchema = z.object({
+  id: z.string().uuid(),
+  jobId: z.string().uuid(),
+  lessonId: z.string().uuid(),
+  language: studioLanguageEnum,
+  audioUrl: z.string().url(),                 // signed, short-lived
+  audioUrlExpiresAt: z.string().datetime(),
+  transcript: z.string(),
+  durationSec: z.number().int().nonnegative(),
+  voiceStyle: z.enum(['narrator', 'conversational', 'friendly']),
+  createdAt: z.string().datetime(),
+});
+
+export const createAudioOverviewSchema = z.object({
+  lessonId: z.string().uuid(),
+  language: studioLanguageEnum,
+  voiceStyle: z.enum(['narrator', 'conversational', 'friendly']).default('narrator'),
+});
+
+export const flashcardSchema = z.object({
+  id: z.string().uuid(),
+  front: z.string().max(500),
+  back: z.string().max(2000),
+  hint: z.string().max(500).nullable(),
+  tags: z.array(z.string()).max(10),
+});
+
+export const flashcardDeckSchema = z.object({
+  id: z.string().uuid(),
+  jobId: z.string().uuid(),
+  lessonId: z.string().uuid(),
+  title: z.string().max(300),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'mixed']),
+  cardCount: z.number().int().nonnegative(),
+  cards: z.array(flashcardSchema),
+  createdAt: z.string().datetime(),
+});
+
+export const createFlashcardDeckSchema = z.object({
+  lessonId: z.string().uuid(),
+  count: z.number().int().min(5).max(50).default(10),
+  difficulty: z.enum(['easy', 'medium', 'hard', 'mixed']).default('mixed'),
+  tags: z.array(z.string()).max(10).optional(),
+});
+```
+
+### 9.8 `UsageCounter`
+
+```ts
+export const usageBucketSchema = z.object({
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nonnegative(),
+});
+
+export const usageCounterSchema = z.object({
+  windowStartsAt: z.string().datetime(),
+  windowEndsAt: z.string().datetime(),
+  tutorMessages:    usageBucketSchema,
+  studioAudio:      usageBucketSchema,
+  studioFlashcards: usageBucketSchema,
 });
 ```
 

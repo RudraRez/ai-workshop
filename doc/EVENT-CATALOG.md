@@ -64,14 +64,33 @@ Subscribers: `PSUBSCRIBE skep:events:*` — filter `eventType` in the subscriber
 
 | Event type | Emitted when | Payload | Likely consumers |
 |---|---|---|---|
-| `tutor.session.started` | `SessionsService.create()` success | `{ sessionId, topic }` | Campaigns (welcome msg), analytics |
+### Chat
+
+| Event type | Emitted when | Payload | Likely consumers |
+|---|---|---|---|
+| `tutor.session.started` | `SessionsService.create()` success | `{ sessionId, topic, lessonId }` | Campaigns (welcome msg), analytics |
 | `tutor.session.ended` | Session transitions to `ended` (explicit, or idle-sweep) | `{ sessionId, messageCount, tokenCount, durationMs }` | Campaigns (follow-up), analytics |
 | `tutor.session.deleted` | Soft-delete of session | `{ sessionId }` | Analytics |
-| `tutor.message.sent` | User prompt persisted (WS or REST) | `{ sessionId, messageId, bodyPreview }` | Campaigns (activity digest) |
+| `tutor.message.sent` | User prompt persisted (WS or REST) | `{ sessionId, messageId, bodyPreview, lessonId }` | Campaigns (activity digest) |
 | `tutor.message.answered` | AI completion persisted | `{ sessionId, messageId, tokenCount, model }` | Analytics, billing aggregation |
 | `tutor.settings.updated` | OWNER/ADMIN updated settings | `{ changedFields: [...] }` | Audit log |
 
-**Hackathon minimum met:** AI Tutor emits **6 domain events** — well above the 3-event floor in `SKEP-INTEGRATION.md §Hackathon DoD`.
+### Studio
+
+| Event type | Emitted when | Payload | Likely consumers |
+|---|---|---|---|
+| `tutor.studio.audio.requested` | `POST /studio/audio-overviews` accepted | `{ jobId, lessonId, language, voiceStyle }` | Analytics, LMS usage |
+| `tutor.studio.audio.generated` | Audio worker finished + file uploaded to R2 | `{ jobId, audioId, lessonId, language, durationSec, sizeBytes }` | Campaigns (notify), analytics |
+| `tutor.studio.audio.failed` | Audio worker failed after retries | `{ jobId, lessonId, errorCode, errorMessage }` | Alerting |
+| `tutor.studio.audio.deleted` | Soft-delete | `{ audioId }` | Analytics |
+| `tutor.studio.flashcards.requested` | `POST /studio/flashcards` accepted | `{ jobId, lessonId, count, difficulty }` | Analytics |
+| `tutor.studio.flashcards.generated` | Deck + cards persisted | `{ jobId, deckId, lessonId, cardCount }` | Campaigns (notify), analytics |
+| `tutor.studio.flashcards.failed` | Worker failed after retries | `{ jobId, lessonId, errorCode, errorMessage }` | Alerting |
+| `tutor.studio.flashcards.deleted` | Soft-delete | `{ deckId }` | Analytics |
+
+Note: `tutor.studio.<roadmap-generator>.*` events are reserved (`slide-decks`, `video-overviews`, `mind-maps`, `reports`, `quizzes`, `infographics`, `data-tables`, `notes`) and will light up when those generators ship. They are not emitted in this build.
+
+**Event count for this build:** AI Tutor emits **14 domain events** (6 chat + 8 Studio) — comfortably above the 3-event floor in `SKEP-INTEGRATION.md §Hackathon DoD`.
 
 ---
 
@@ -80,10 +99,13 @@ Subscribers: `PSUBSCRIBE skep:events:*` — filter `eventType` in the subscriber
 | Event type | Source | Why we care | Handler |
 |---|---|---|---|
 | `platform.community.onboarded` | Platform | Confirm schema + settings row provisioned | Log + ensure `tutor_settings` singleton exists |
-| `platform.community.suspended` | Platform | Stop accepting writes for community | Mark registry `status=suspended`; reject new sessions |
-| `platform.community.archived` | Platform | Read-only mode | Mark `archived`; allow transcript reads only |
+| `platform.community.suspended` | Platform | Stop accepting writes for community | Mark registry `status=suspended`; reject new sessions/jobs |
+| `platform.community.archived` | Platform | Read-only mode | Mark `archived`; allow transcript/audio/flashcard reads only |
+| `platform.course.lesson.created` | Platform (Course) | Populate local `tutor_lessons` mirror | Upsert `tutor_lessons` row + set `content_hash` |
+| `platform.course.lesson.updated` | Platform (Course) | Refresh mirror; invalidate stale Studio outputs | Upsert `tutor_lessons`; mark derived audio/decks as `stale = true` (future flag) |
+| `platform.course.lesson.deleted` | Platform (Course) | Soft-delete mirror + derived assets | `UPDATE ... SET deleted_at = NOW()` on lesson + cascading Studio rows |
 
-AI Tutor does **not** subscribe to other modules' events today — it is purely a producer toward Campaigns.
+AI Tutor does **not** subscribe to other modules' domain events today — it is a producer toward Campaigns and a consumer of Course lifecycle.
 
 ---
 
@@ -159,6 +181,46 @@ AI Tutor does **not** subscribe to other modules' events today — it is purely 
     "messageCount": 24,
     "tokenCount": 3187,
     "durationMs": 1800000
+  },
+  "correlationId": "req-7f1e2b4a"
+}
+```
+
+### `tutor.studio.audio.generated`
+
+```json
+{
+  "eventId": "e5f6-...",
+  "eventType": "tutor.studio.audio.generated",
+  "communityCode": "COM96179941",
+  "actorUserId": "usr-1234",
+  "occurredAt": "2026-04-18T10:22:00.000Z",
+  "payload": {
+    "jobId": "job-0001",
+    "audioId": "audio-9001",
+    "lessonId": "lesson-042",
+    "language": "hi-IN",
+    "durationSec": 312,
+    "sizeBytes": 2985311
+  },
+  "correlationId": "req-7f1e2b4a"
+}
+```
+
+### `tutor.studio.flashcards.generated`
+
+```json
+{
+  "eventId": "f7g8-...",
+  "eventType": "tutor.studio.flashcards.generated",
+  "communityCode": "COM96179941",
+  "actorUserId": "usr-1234",
+  "occurredAt": "2026-04-18T10:23:00.000Z",
+  "payload": {
+    "jobId": "job-0002",
+    "deckId": "deck-4401",
+    "lessonId": "lesson-042",
+    "cardCount": 15
   },
   "correlationId": "req-7f1e2b4a"
 }

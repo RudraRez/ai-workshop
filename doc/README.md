@@ -10,6 +10,36 @@
 
 ---
 
+## Product Surface — Three Tabs
+
+The module presents three tabs inside the community app. A tab is a UI pivot, not a service boundary — they all sit on the same backend.
+
+| Tab | Purpose |
+|---|---|
+| **AI Tutor** | Context-aware chat assistant. Knows which lesson the user is watching. Quick-action chips: *Summarize this lesson*, *Generate Flashcards*, *Quiz me*, *Show Mind Map*, *Explain concept*, *My progress*. Shows per-day usage counter (e.g. `12/20 left`). Footer: "AI Tutor may make mistakes · Uses Socratic method". |
+| **Studio** | Generator workspace. Produces study assets **from the lesson context**. Ten generator types (below); outputs saved into the tab's output pane. |
+| **Course** | Lesson list + lesson viewer. Source of `lessonId` that flows into the other two tabs. Read-mostly surface this module consumes; content itself is owned by SKEP main platform. |
+
+### Studio — Ten Generators
+
+| # | Generator | MVP? | Notes |
+|---|---|---|---|
+| 1 | **Audio Overview** | ✅ YES | Narrated audio in 9 Indian languages (Hindi, Bengali, Gujarati, Kannada, Malayalam, Marathi, Punjabi, Tamil, Telugu) + English. Async (TTS is slow). |
+| 2 | **Flashcards** | ✅ YES | AI generates structured `{front, back, hint?, tags?}` deck from lesson content. |
+| 3 | Slide Deck (BETA) | ❌ Roadmap | Coming soon. |
+| 4 | Video Overview | ❌ Roadmap | Coming soon. |
+| 5 | Mind Map | ❌ Roadmap | Coming soon. |
+| 6 | Reports | ❌ Roadmap | Coming soon. |
+| 7 | Quiz | ❌ Roadmap | Coming soon. |
+| 8 | Infographic (BETA) | ❌ Roadmap | Coming soon. |
+| 9 | Data Table | ❌ Roadmap | Coming soon. |
+| 10 | Add Note | ❌ Roadmap | Coming soon (user-authored note capture). |
+
+**Scope for this build:** only **Audio Overview** and **Flashcards** are implemented end-to-end. The other eight are documented in the architecture so the foundations (jobs, storage, events, table layout) generalize when we add them, but they do **not** get endpoints, tables, or UI in this build.
+
+
+---
+
 ## Status
 
 | File | Owner | Status | Depends on |

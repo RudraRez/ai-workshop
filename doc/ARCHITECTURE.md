@@ -271,7 +271,124 @@ GitHub main ─┬─▶ Vercel  (apps/frontend)   — preview per PR
 
 ---
 
-## 9. AI Tutor Specifics
+## 9. Product Surface — Three Tabs
+
+The UI splits into three tabs that share one backend and one lesson-context state:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Community app                                                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                  │
+│  │  AI Tutor    │  │    Studio    │  │    Course    │                  │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘                  │
+│         │                 │                 │                          │
+│         │  lessonId (current lesson user is "Watching")                │
+│         ▼                 ▼                 ▼                          │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │  Lesson context store (Zustand)                                  │  │
+│  │   { lessonId, lessonTitle, courseId, lastSeenAt }                │  │
+│  └───────────────────────────┬──────────────────────────────────────┘  │
+└──────────────────────────────┼─────────────────────────────────────────┘
+                               │
+                               ▼ every call attaches lessonId
+                 ┌─────────────────────────────┐
+                 │   NestJS backend — /tutor   │
+                 ├─────────────────────────────┤
+                 │  Sessions + Messages (chat) │
+                 │  Studio jobs (async)        │
+                 │  Course proxy (read-only)   │
+                 └─────────────────────────────┘
+```
+
+- **AI Tutor tab** → chat via REST + WebSocket (§ Streaming Flow below). Per-day usage counter shown (`12/20 left`) — driven by `tutor_settings.member_daily_message_cap`.
+- **Studio tab** → generator workspace; produces assets anchored to a `lessonId`. Ten generators total; **Audio Overview + Flashcards** in MVP, rest roadmap.
+- **Course tab** → lesson list + lesson viewer. Read-mostly; lesson content is owned by SKEP main platform and proxied/cached by this module.
+
+### Studio Subsystem
+
+```
+POST /api/v1/tutor/studio/<generator>   (sync-ish if fast, async if slow)
+      │
+      ▼
+┌──────────────────┐
+│ StudioService    │  creates row in tutor_studio_jobs
+└─────┬────────────┘
+      │ enqueue
+      ▼
+┌──────────────────┐     BullMQ worker
+│ Studio queue     │◀──────────────────────────────┐
+│ (Redis, BullMQ)  │                               │
+└─────┬────────────┘                               │
+      │                                            │
+      ▼                                            │
+┌─────────────────────┐    ┌───────────────────┐   │
+│ Audio worker        │───▶│ AiProvider (text) │   │
+│  (script → TTS)     │    └───────────────────┘   │
+│  ─ picks language   │    ┌───────────────────┐   │
+│  ─ calls TTS        │───▶│ TtsProvider       │   │
+│  ─ uploads to R2    │    └───────────────────┘   │
+│  ─ writes row       │    ┌───────────────────┐   │
+│                     │───▶│ ObjectStorage (R2)│   │
+└─────────┬───────────┘    └───────────────────┘   │
+          │                                        │
+          ▼  emit tutor.studio.audio.generated ────┘
+┌─────────────────────┐
+│ Flashcards worker   │───▶ AiProvider (structured JSON output)
+│  ─ prompts model    │
+│  ─ validates schema │
+│  ─ writes deck+cards│
+└─────────┬───────────┘
+          ▼  emit tutor.studio.flashcards.generated
+```
+
+**Design notes:**
+- One polymorphic `tutor_studio_jobs` row tracks status for any generator. Type-specific output lives in its own table (`tutor_audio_overviews`, `tutor_flashcard_decks` + `tutor_flashcards`, etc.).
+- Generators declared via a registry so adding the next generator means: new table + new worker + register enum value. No refactor of the orchestration layer.
+- Audio uses BullMQ because TTS is slow (seconds–minutes). Flashcards can run inline or via queue — design says queue for uniformity and cancelability.
+- Object storage: Cloudflare R2. Audio files keyed `tutor/<community_code>/audio/<job_id>.mp3`. Signed URLs with short TTL for playback.
+
+### Multi-Language Audio
+
+Supported languages (dropdown on Audio Overview generator):
+
+| Code | Language |
+|---|---|
+| `en-IN` | English (India) — default |
+| `hi-IN` | Hindi |
+| `bn-IN` | Bengali |
+| `gu-IN` | Gujarati |
+| `kn-IN` | Kannada |
+| `ml-IN` | Malayalam |
+| `mr-IN` | Marathi |
+| `pa-IN` | Punjabi |
+| `ta-IN` | Tamil |
+| `te-IN` | Telugu |
+
+Pipeline: lesson text → AI generates a narration script in the target language → TTS provider renders audio → store MP3 + transcript in R2 + DB.
+
+### Lesson Context
+
+Every AI Tutor chat turn and every Studio generation attaches a `lessonId`. The backend persists `lessonId` + `lessonTitle` on the session (for chat) and on the studio job (for generators), so downstream analytics and resumability work.
+
+The Course tab itself is a read proxy:
+
+| Endpoint | Purpose | Source |
+|---|---|---|
+| `GET /api/v1/tutor/course/lessons` | List lessons | Cached mirror synced from SKEP main |
+| `GET /api/v1/tutor/course/lessons/:id` | Lesson detail + content hash | Cached mirror |
+
+Cache invalidation: on `platform.course.lesson.updated` event (subscribed).
+
+### Quick-Action Chips
+
+The AI Tutor tab exposes chip-style shortcuts (visible in screenshots: *Summarize this lesson*, *Generate Flashcards*, *Quiz me now*, *Show Mind Map*, *Explain concept*, *Quiz me*, *Flashcards*, *My progress*). Each chip is a **frontend affordance** — most translate to a prefilled prompt sent on the existing chat channel. Two are deep-links:
+
+- *Generate Flashcards* / *Flashcards* → navigate to Studio → Flashcards with the current `lessonId`.
+- Others not in MVP (Quiz, Mind Map, My progress) are rendered but disabled with a "coming soon" tooltip.
+
+---
+
+## 10. AI Tutor Chat Specifics
 
 ### AI Provider Boundary
 
@@ -315,13 +432,17 @@ Client              WebSocket             MessagesService       AiProvider
 
 ---
 
-## 10. Open Architectural Decisions
+## 11. Open Architectural Decisions
 
 Tracked here until resolved. Move to `logs/decisions/*.md` ADR once committed.
 
-- [ ] **AI provider:** Anthropic Claude | OpenAI | Azure OpenAI. Default for hackathon: Anthropic Claude Opus 4.7.
-- [ ] **SSR vs CSR split:** `/sessions` + `/sessions/[id]/transcript` SSR; `/sessions/[id]` (active chat) CSR.
-- [ ] **Transcript storage:** DB-only vs. R2 offload threshold.
+- [ ] **AI text provider:** Anthropic Claude | OpenAI | Azure OpenAI. Default: Anthropic Claude Opus 4.7 (Claude 4.7 is strongest available for reasoning + structured output).
+- [ ] **TTS provider:** ElevenLabs | Azure Speech | Google Cloud TTS | AWS Polly. Must support all 9 Indian languages. Default proposal: Azure Speech (best Indian-language coverage + pricing).
+- [ ] **SSR vs CSR split:** `/sessions`, `/sessions/[id]/transcript`, `/course/*`, `/studio` index SSR; `/sessions/[id]` (active chat) and `/studio/<generator>` CSR.
+- [ ] **Transcript storage:** DB-only vs. R2 offload threshold (proposal: offload at >100KB).
+- [ ] **Audio storage lifetime:** do audio overviews expire? Proposal: keep as long as the source lesson exists; delete on lesson deletion.
 - [ ] **Prompt moderation:** classify user prompts before sending to AI? Which service?
-- [ ] **Rate limiting:** `@nestjs/throttler` default (60/min per user per endpoint); `tutor:ask` WebSocket has its own per-user/min cap (default 20/min).
-- [ ] **Session auto-end timeout:** idle for N minutes → auto-end session + emit `tutor.session.ended`. Default 30min.
+- [ ] **Rate limiting:** `@nestjs/throttler` default (60/min per user per endpoint); `tutor:ask` WS has its own per-user/min cap (default 20/min). Studio generators have per-day caps from `tutor_settings`.
+- [ ] **Session auto-end timeout:** idle for N minutes → auto-end + emit `tutor.session.ended`. Default 30min.
+- [ ] **Usage counter semantics:** `12/20 left` visible in UI — is this per-day messages, per-day AI Tutor + Studio combined, or per-month? Proposal: per-day chat messages only, per role cap from settings.
+- [ ] **Course lesson source:** direct DB view into SKEP main, or event-driven replication into local `tutor_lessons`? Proposal: event-driven replication on `platform.course.lesson.*` events.

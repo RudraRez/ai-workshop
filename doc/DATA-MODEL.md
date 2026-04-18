@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS tutor_sessions (
   context        TEXT,
   status         VARCHAR(20) NOT NULL DEFAULT 'active',   -- active | ended
   created_by     UUID NOT NULL,                           -- JWT.sub
+  lesson_id      UUID,                                    -- optional: lesson the user is watching
+  lesson_title   VARCHAR(300),                            -- denormalized for display
   message_count  INTEGER NOT NULL DEFAULT 0,
   ended_at       TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -195,13 +197,173 @@ CREATE UNIQUE INDEX tutor_settings_singleton_idx
   ON tutor_settings ((true));
 ```
 
-### 5.5 Relationship Diagram
+### 5.5 `tutor_lessons` (Course mirror)
+
+Read-mostly mirror populated by subscribing to `platform.course.lesson.*` events from SKEP main. This module never calls the course owner directly.
+
+```sql
+CREATE TABLE IF NOT EXISTS tutor_lessons (
+  id             UUID PRIMARY KEY,                        -- comes from source; not gen_random_uuid
+  course_id      UUID NOT NULL,
+  title          VARCHAR(300) NOT NULL,
+  summary        TEXT,
+  content        TEXT NOT NULL,                           -- full lesson text used as input for AI / TTS
+  content_hash   CHAR(64) NOT NULL,                       -- sha256; invalidates caches
+  duration_sec   INTEGER NOT NULL DEFAULT 0,
+  source_updated_at  TIMESTAMPTZ NOT NULL,                -- upstream updatedAt
+  mirrored_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),  -- when we copied it in
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at     TIMESTAMPTZ
+);
+
+CREATE INDEX tutor_lessons_course_idx
+  ON tutor_lessons (course_id, source_updated_at DESC)
+  WHERE deleted_at IS NULL;
+```
+
+### 5.6 `tutor_studio_jobs` (polymorphic job tracker)
+
+Single job table for every Studio generator (present and future). Type-specific output lives in sibling tables.
+
+```sql
+CREATE TABLE IF NOT EXISTS tutor_studio_jobs (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type           VARCHAR(40) NOT NULL,                    -- 'audio-overview' | 'flashcards' | <future>
+  lesson_id      UUID NOT NULL REFERENCES tutor_lessons(id),
+  requested_by   UUID NOT NULL,
+  status         VARCHAR(20) NOT NULL DEFAULT 'pending',  -- pending | running | completed | failed
+  progress       REAL NOT NULL DEFAULT 0,                 -- 0..1
+  input          JSONB NOT NULL DEFAULT '{}'::jsonb,      -- generator-specific params
+  output_ref     UUID,                                    -- FK resolved by type
+  idempotency_key VARCHAR(80),                            -- unique per (requested_by, type) window
+  error_code     VARCHAR(80),
+  error_message  TEXT,
+  started_at     TIMESTAMPTZ,
+  completed_at   TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at     TIMESTAMPTZ
+);
+
+CREATE INDEX tutor_studio_jobs_user_created_idx
+  ON tutor_studio_jobs (requested_by, created_at DESC)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX tutor_studio_jobs_lesson_type_idx
+  ON tutor_studio_jobs (lesson_id, type, created_at DESC)
+  WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX tutor_studio_jobs_idem_idx
+  ON tutor_studio_jobs (requested_by, type, idempotency_key)
+  WHERE idempotency_key IS NOT NULL AND deleted_at IS NULL;
+```
+
+### 5.7 `tutor_audio_overviews`
+
+```sql
+CREATE TABLE IF NOT EXISTS tutor_audio_overviews (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id         UUID NOT NULL UNIQUE REFERENCES tutor_studio_jobs(id),
+  lesson_id      UUID NOT NULL REFERENCES tutor_lessons(id),
+  language       VARCHAR(10) NOT NULL,                    -- en-IN | hi-IN | bn-IN | gu-IN | kn-IN | ml-IN | mr-IN | pa-IN | ta-IN | te-IN
+  voice_style    VARCHAR(20) NOT NULL DEFAULT 'narrator', -- narrator | conversational | friendly
+  storage_key    TEXT NOT NULL,                           -- R2 object key; we sign URLs on read
+  transcript     TEXT NOT NULL,                           -- the narration script actually rendered
+  duration_sec   INTEGER NOT NULL,
+  size_bytes     BIGINT NOT NULL,
+  tts_provider   VARCHAR(40) NOT NULL,                    -- azure-speech | elevenlabs | polly | google-tts
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at     TIMESTAMPTZ
+);
+
+CREATE INDEX tutor_audio_lesson_lang_idx
+  ON tutor_audio_overviews (lesson_id, language, created_at DESC)
+  WHERE deleted_at IS NULL;
+```
+
+### 5.8 `tutor_flashcard_decks` + `tutor_flashcards`
+
+```sql
+CREATE TABLE IF NOT EXISTS tutor_flashcard_decks (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id         UUID NOT NULL UNIQUE REFERENCES tutor_studio_jobs(id),
+  lesson_id      UUID NOT NULL REFERENCES tutor_lessons(id),
+  title          VARCHAR(300) NOT NULL,
+  difficulty     VARCHAR(20) NOT NULL,                    -- easy | medium | hard | mixed
+  card_count     INTEGER NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at     TIMESTAMPTZ
+);
+
+CREATE INDEX tutor_flashcard_decks_lesson_idx
+  ON tutor_flashcard_decks (lesson_id, created_at DESC)
+  WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS tutor_flashcards (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deck_id        UUID NOT NULL REFERENCES tutor_flashcard_decks(id),
+  position       INTEGER NOT NULL,                        -- ordinal within deck
+  front          VARCHAR(500) NOT NULL,
+  back           TEXT NOT NULL,
+  hint           VARCHAR(500),
+  tags           TEXT[] NOT NULL DEFAULT '{}',
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at     TIMESTAMPTZ
+);
+
+CREATE INDEX tutor_flashcards_deck_position_idx
+  ON tutor_flashcards (deck_id, position)
+  WHERE deleted_at IS NULL;
+```
+
+### 5.9 `tutor_usage_daily` (per-day counters)
+
+Powers the `GET /me/usage` badge (`12/20 left`). Single row per (user, date).
+
+```sql
+CREATE TABLE IF NOT EXISTS tutor_usage_daily (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               UUID NOT NULL,
+  day                   DATE NOT NULL,                    -- UTC day boundary
+  tutor_messages_used   INTEGER NOT NULL DEFAULT 0,
+  studio_audio_used     INTEGER NOT NULL DEFAULT 0,
+  studio_flashcards_used INTEGER NOT NULL DEFAULT 0,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, day)
+);
+
+CREATE INDEX tutor_usage_daily_day_idx
+  ON tutor_usage_daily (day);
+```
+
+Limits (`limit` side of the counter) come from `tutor_settings`, so admins can tune caps without a migration.
+
+### 5.10 `tutor_settings` — extension
+
+Extends §5.4 — the settings row carries Studio caps too:
+
+```sql
+ALTER TABLE tutor_settings
+  ADD COLUMN IF NOT EXISTS member_daily_audio_cap      INTEGER NOT NULL DEFAULT 5,
+  ADD COLUMN IF NOT EXISTS member_daily_flashcards_cap INTEGER NOT NULL DEFAULT 10;
+```
+
+### 5.11 Relationship Diagram
 
 ```
-tutor_settings    (singleton per schema)
+tutor_settings        (singleton per schema)
+tutor_usage_daily     (one row per user per day)
 
-tutor_sessions ──1─┬─∞── tutor_messages
-                   └─1─── tutor_transcripts
+tutor_lessons ──────┬─∞── tutor_sessions ──1─┬─∞── tutor_messages
+                    │                        └─1─── tutor_transcripts
+                    │
+                    └─∞── tutor_studio_jobs ──1──1── tutor_audio_overviews
+                                             └──1──1── tutor_flashcard_decks ──1─∞── tutor_flashcards
 ```
 
 All foreign keys stay within the same schema. No cross-schema references.

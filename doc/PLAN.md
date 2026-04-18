@@ -16,7 +16,9 @@
 - [ ] `project/BRIEF.md` filled with product name, problem, target users, goals.
 - [ ] `project/REQUIREMENTS.md` filled with MoSCoW features (current assumed scope: sessions, messages, transcripts, settings — see `doc/MANIFEST.yaml`).
 - [ ] `project/CONSTRAINTS.md` MVP definition + explicit out-of-scope.
-- [ ] **AI provider selected** (Anthropic Claude default). Blocks 2.5, 4.3.
+- [ ] **AI text provider selected** (Anthropic Claude default). Blocks 2.5, 4.3, 5.*.
+- [ ] **TTS provider selected** (Azure Speech default — best Indian-language coverage). Blocks 5.6.
+- [ ] **Object storage** (Cloudflare R2) bucket provisioned + signing keys. Blocks 5.*.
 - [ ] Figma link present (or "no Figma — design inline" stated).
 - [ ] `.env.example` filled for both apps (see `doc/backend/` and `doc/frontend/`).
 
@@ -206,38 +208,133 @@ If any non-optional item is unchecked, that phase halts. Update `project/` and r
 
 ---
 
-## Phase 5 — Quality Gate (parallel, fresh instances)
+## Phase 4.5 — Course Lesson Mirror
 
-**Team pattern:** Reviewer (fresh) ∥ Tester ∥ security-review skill.
+**Goal:** Populate `tutor_lessons` from SKEP main's `platform.course.lesson.*` events so every AI Tutor chat turn and every Studio job has a local, hash-verified lesson to anchor on.
 
-| # | Task | Owner |
-|---|---|---|
-| 5.1 | Adversarial review of all Phase 2–4 diffs | ⚪ |
-| 5.2 | OWASP checklist run (auth, injection, IDOR, CSRF, rate limiting) | ⚪ |
-| 5.3 | Coverage report: overall > 60%, auth = 100%, tenant isolation test present | 🟥 |
-| 5.4 | Perf smoke: API p95 < 300ms, DB p95 < 100ms, FE LCP < 2.5s | 🟥 |
-| 5.5 | Accessibility scan: WCAG 2.1 AA on every authed page | 🟩 + 🟥 |
-| 5.6 | DoD checklist (7 items from SKEP-INTEGRATION §Hackathon DoD) | ⚪ |
+**Team pattern:** Backend solo + Tester.
 
-**Exit criteria:** All gate thresholds from `CONSTRAINTS.md §Quality Gate Thresholds` met.
+| # | Task | Owner | Size | Paths |
+|---|---|---|---|---|
+| 4.5.1 | Migration `001_init_tutor_lessons.sql` (table from `doc/DATA-MODEL.md §5.5`) | 🟦 | S | `apps/backend/src/modules/course/migrations/` |
+| 4.5.2 | `CourseMirrorService`: subscribe to `platform.course.lesson.created|updated|deleted`, idempotent upsert into `tutor_lessons` | 🟦 | M | `apps/backend/src/modules/course/` |
+| 4.5.3 | `CourseController`: `GET /course/lessons`, `GET /course/lessons/:id` (read-only from mirror) | 🟦 | S | same |
+| 4.5.4 | Bootstrap sweep on module start — if mirror is empty for a community, request full sync from main (one-time `platform.course.sync.requested` event) | 🟦 | S | same |
+| 4.5.5 | Tests: replay 3 lesson events → expected rows; duplicate delivery → idempotent | 🟥 | M | `apps/backend/test/` |
+
+**Exit criteria:** `GET /course/lessons` returns the seeded lesson list; event replay is idempotent.
+
+**Gate:** `/approve phase-4.5`.
+
+---
+
+## Phase 5 — Studio: Audio Overview + Flashcards
+
+**Goal:** Ship Studio tab with **only two generators** — Audio Overview (9 Indian languages + English) and Flashcards. Remaining 8 generators return `501 TUTOR_GENERATOR_NOT_AVAILABLE`.
+
+**Team pattern:** Mixed parallel. Backend foundations first, then two workers in parallel, Frontend follows.
+
+### 5A. Foundations (🟦)
+
+| # | Task | Size | Paths |
+|---|---|---|---|
+| 5.1 | Migration `001_init_tutor_studio_jobs.sql` (§5.6) | S | `apps/backend/src/modules/studio/migrations/` |
+| 5.2 | Migration `002_add_studio_caps_to_tutor_settings.sql` (§5.10) | XS | `apps/backend/src/modules/settings/migrations/` |
+| 5.3 | Migration `003_init_tutor_usage_daily.sql` (§5.9) | S | `apps/backend/src/modules/studio/migrations/` |
+| 5.4 | `StudioService.submitJob(type, input, idempotencyKey)` — inserts job, enqueues BullMQ | M | `apps/backend/src/modules/studio/` |
+| 5.5 | `StudioController`: common list/get/delete routes + type-scoped POST routes | M | same |
+| 5.6 | TTS provider adapter interface + `AzureSpeechAdapter` (all 10 languages) + stub adapter for tests | M | `apps/backend/src/modules/studio/tts/` |
+| 5.7 | Object storage client (`R2Client`) — upload, presign (short TTL) | S | `apps/backend/src/modules/studio/storage/` |
+| 5.8 | `UsageService` — increment + read per-day counters; caps from `tutor_settings` | M | `apps/backend/src/modules/usage/` |
+| 5.9 | `GET /me/usage` endpoint driving the `12/20 left` badge | S | `apps/backend/src/modules/me/` |
+
+### 5B. Audio Overview worker (🟦)
+
+| # | Task | Size | Paths |
+|---|---|---|---|
+| 5.10 | Migration `001_init_tutor_audio_overviews.sql` (§5.7) | S | `apps/backend/src/modules/studio/audio/migrations/` |
+| 5.11 | `AudioOverviewWorker`: pull job → generate script via AI (language-localized) → TTS → upload to R2 → insert row | L | `apps/backend/src/modules/studio/audio/` |
+| 5.12 | Events: emit `tutor.studio.audio.requested` / `.generated` / `.failed` | S | same |
+| 5.13 | `POST /studio/audio-overviews`, `GET /studio/audio-overviews`, `GET /studio/audio-overviews/:id` (signed URL) | M | same |
+| 5.14 | Tests: stub TTS adapter, assert job lifecycle + event sequence + signed URL shape | M | `apps/backend/test/` |
+
+### 5C. Flashcards worker (🟦)
+
+| # | Task | Size | Paths |
+|---|---|---|---|
+| 5.15 | Migration `001_init_tutor_flashcard_decks.sql` + `002_init_tutor_flashcards.sql` (§5.8) | S | `apps/backend/src/modules/studio/flashcards/migrations/` |
+| 5.16 | `FlashcardsWorker`: prompt AI with lesson content + count/difficulty → parse JSON → validate with Zod → insert deck + cards in one transaction | L | `apps/backend/src/modules/studio/flashcards/` |
+| 5.17 | Events: emit `tutor.studio.flashcards.requested` / `.generated` / `.failed` | S | same |
+| 5.18 | `POST /studio/flashcards`, `GET /studio/flashcards`, `GET /studio/flashcards/:id` | M | same |
+| 5.19 | Tests: deterministic AI stub returns valid JSON deck; schema-violating response → `failed` + event | M | `apps/backend/test/` |
+
+### 5D. Roadmap-generator stub (🟦)
+
+| # | Task | Size | Paths |
+|---|---|---|---|
+| 5.20 | `RoadmapController` catches the 8 roadmap paths and returns `501 TUTOR_GENERATOR_NOT_AVAILABLE` with `generator` name in details | S | `apps/backend/src/modules/studio/` |
+
+### 5E. Frontend (🟩)
+
+| # | Task | Size | Paths |
+|---|---|---|---|
+| 5.21 | Shared schemas: `lesson.ts`, `usage.ts`, `studio/{job,audio-overview,flashcards}.ts` | S | `packages/shared/src/schemas/` |
+| 5.22 | `LessonContext` provider (Zustand) — current lessonId/lessonTitle, rehydrates from URL | S | `apps/frontend/src/lib/lesson-context.ts` |
+| 5.23 | `UsageBadge` — polls `/me/usage`, renders `12/20 left` | S | `apps/frontend/src/components/tutor/` |
+| 5.24 | Three-tab shell (AI Tutor / Studio / Course) with router-aware tab state | M | `apps/frontend/src/app/(authed)/` |
+| 5.25 | Course tab: lesson list + detail view (read from `/course/lessons`) | M | `apps/frontend/src/app/(authed)/course/` |
+| 5.26 | AI Tutor tab: quick-action chips wired (Summarize, Generate Flashcards, Explain concept); roadmap chips render disabled with tooltip | M | `apps/frontend/src/components/tutor/quick-actions.tsx` |
+| 5.27 | Studio tab: generator grid (10 cards, 2 enabled, 8 disabled w/ "Coming soon") matching screenshot | M | `apps/frontend/src/app/(authed)/studio/page.tsx` |
+| 5.28 | Studio → Audio Overview page: language dropdown (10 options) + voice style + submit + job polling + audio player | L | `apps/frontend/src/app/(authed)/studio/audio-overviews/` |
+| 5.29 | Studio → Flashcards page: count + difficulty + submit + deck viewer (swipeable card UI) | L | `apps/frontend/src/app/(authed)/studio/flashcards/` |
+| 5.30 | `useStudioJob(jobId)` hook — polls every 2s until `completed|failed`, falls back to WS signal if available | M | `apps/frontend/src/hooks/` |
+| 5.31 | E2E: from Course → open lesson → Studio → generate audio in Hindi → playback available | M | `apps/frontend/tests/` |
+| 5.32 | E2E: from AI Tutor quick-action "Generate Flashcards" → lands on Studio flashcards with prefilled lessonId → submit → deck visible | M | `apps/frontend/tests/` |
+
+**Exit criteria:**
+- Audio generation completes within 90s for an average lesson; MP3 plays in browser via signed URL.
+- Flashcards generation completes within 30s; deck of N cards rendered.
+- Usage counter increments on each generation; refuses when cap hit (`TUTOR_STUDIO_QUOTA_EXCEEDED`).
+- All 8 roadmap paths return `501 TUTOR_GENERATOR_NOT_AVAILABLE`.
+- Events visible on Redis for the 8 Studio event types.
 
 **Gate:** `/approve phase-5`.
 
 ---
 
-## Phase 6 — Ship
+## Phase 6 — Quality Gate (parallel, fresh instances)
+
+**Team pattern:** Reviewer (fresh) ∥ Tester ∥ security-review skill.
+
+| # | Task | Owner |
+|---|---|---|
+| 6.1 | Adversarial review of all Phase 2–5 diffs | ⚪ |
+| 6.2 | OWASP checklist run (auth, injection, IDOR, CSRF, rate limiting, signed URL scope) | ⚪ |
+| 6.3 | Coverage report: overall > 60%, auth = 100%, tenant isolation test present | 🟥 |
+| 6.4 | Perf smoke: API p95 < 300ms, DB p95 < 100ms, FE LCP < 2.5s | 🟥 |
+| 6.5 | Audio generation smoke across all 10 languages (one lesson, render + play each) | 🟥 |
+| 6.6 | Accessibility scan: WCAG 2.1 AA on every authed page (including audio player + deck viewer) | 🟩 + 🟥 |
+| 6.7 | DoD checklist (7 items from SKEP-INTEGRATION §Hackathon DoD) | ⚪ |
+
+**Exit criteria:** All gate thresholds from `CONSTRAINTS.md §Quality Gate Thresholds` met.
+
+**Gate:** `/approve phase-6`.
+
+---
+
+## Phase 7 — Ship
 
 **Team pattern:** DevOps solo.
 
 | # | Task | Owner |
 |---|---|---|
-| 6.1 | Railway backend: environment set, Dockerfile builds, migrations release command wired | 🟨 |
-| 6.2 | Vercel frontend: env vars set, preview deploys green | 🟨 |
-| 6.3 | GitHub Actions: lint + test + typecheck on PR; deploy on main | 🟨 |
-| 6.4 | Production smoke: `/health` + `/ready` green on prod; FE login flow green | 🟨 |
-| 6.5 | Close all logs; update `MEMORY.md`; tag release | 🟨 |
+| 7.1 | Railway backend: environment set (incl. R2 + TTS provider keys), Dockerfile builds, migrations release command wired | 🟨 |
+| 7.2 | Vercel frontend: env vars set, preview deploys green | 🟨 |
+| 7.3 | GitHub Actions: lint + test + typecheck on PR; deploy on main | 🟨 |
+| 7.4 | Production smoke: `/health` + `/ready` green on prod; FE login flow + one Studio audio generation green | 🟨 |
+| 7.5 | Close all logs; update `MEMORY.md`; tag release | 🟨 |
 
-**Gate:** `/approve phase-6` — production live.
+**Gate:** `/approve phase-7` — production live.
 
 ---
 
@@ -265,9 +362,13 @@ These run alongside the phases above, not as their own phase:
 
 ## Open Plan Questions
 
-- [ ] AI provider: Anthropic Claude (default), OpenAI, or Azure OpenAI? Blocks 2.5 & 4.2.
+- [ ] AI text provider: Anthropic Claude (default), OpenAI, or Azure OpenAI? Blocks 2.5 & 4.2 & Phase 5.
+- [ ] TTS provider: Azure Speech (default — best Indian-language coverage), ElevenLabs, AWS Polly, or Google Cloud TTS? Blocks 5.6.
+- [ ] Object storage: Cloudflare R2 (default per `TECH-STACK.md`). Bucket + keys provisioned before Phase 5.
+- [ ] Per-day caps defaults — proposal: messages 20, audio 5, flashcards 10 for MEMBER.
 - [ ] Transcript storage threshold — always DB, or offload > 100KB to R2?
-- [ ] Per-user daily message cap default (proposal: 50/day for MEMBER).
+- [ ] Audio retention: keep as long as source lesson exists (proposal), or expire after N days?
 - [ ] Content moderation on user prompts — on/off, which provider?
-- [ ] Multimodal inputs (image uploads) in scope for MVP? If yes, add `tutor_attachments` table + R2 presigned flow to Phase 2.
+- [ ] Roadmap-generator fallback UX: tooltip "Coming soon", or waitlist capture? Proposal: tooltip only in MVP.
 - [ ] Session idle-end sweep job: BullMQ repeatable job? Proposal: every 5 min, end sessions idle > 30 min.
+- [ ] Course tab content source: direct DB view into SKEP main vs. event-driven replication. Proposal: event replication (Phase 4.5).
