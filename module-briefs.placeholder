@@ -1,0 +1,3 @@
+# This file was a probe used to test whether the filesystem tool could
+# auto-create parent directories. It can't. Safe to delete.
+</content>

@@ -1,0 +1,3245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Launchpad Project Starter</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #141417;
+    --surface-2: #1c1c21;
+    --border: #2a2a30;
+    --border-active: #6366f1;
+    --text: #e4e4e7;
+    --text-muted: #71717a;
+    --accent: #6366f1;
+    --accent-hover: #818cf8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --radius: 12px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+  header { text-align: center; margin-bottom: 48px; }
+  header h1 {
+    font-size: 2rem; font-weight: 700;
+    background: linear-gradient(135deg, #6366f1, #a78bfa, #c084fc);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px;
+  }
+  header p { color: var(--text-muted); font-size: 1.05rem; }
+  .progress-bar { display: flex; gap: 6px; margin-bottom: 40px; }
+  .progress-step { flex: 1; height: 4px; background: var(--border); border-radius: 2px; transition: background 0.3s; }
+  .progress-step.active { background: var(--accent); }
+  .progress-step.done { background: var(--success); }
+  .step-labels { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.75rem; color: var(--text-muted); }
+  .step-labels span.active { color: var(--accent); font-weight: 600; }
+  .step-labels span.done { color: var(--success); }
+  .step { display: none; animation: fadeIn 0.3s ease; }
+  .step.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .step h2 { font-size: 1.4rem; font-weight: 600; margin-bottom: 6px; }
+  .step .subtitle { color: var(--text-muted); margin-bottom: 28px; font-size: 0.95rem; }
+  .options-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .option-card {
+    background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius);
+    padding: 20px 16px; cursor: pointer; transition: all 0.2s; text-align: center; user-select: none;
+  }
+  .option-card:hover { border-color: var(--accent); background: var(--surface-2); }
+  .option-card.selected { border-color: var(--accent); background: rgba(99,102,241,0.1); box-shadow: 0 0 0 1px var(--accent); }
+  .option-card .icon { font-size: 2rem; margin-bottom: 8px; display: block; }
+  .option-card .label { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+  .option-card .desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
+  .multi-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; font-style: italic; }
+  .input-group { margin-bottom: 20px; }
+  .input-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+  .input-group input, .input-group textarea {
+    width: 100%; background: var(--surface); border: 2px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; color: var(--text); font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s;
+  }
+  .input-group input:focus, .input-group textarea:focus { outline: none; border-color: var(--accent); }
+  .input-group textarea { resize: vertical; min-height: 80px; }
+  .btn-row { display: flex; gap: 12px; justify-content: space-between; margin-top: 32px; }
+  .btn { padding: 12px 28px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 2px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--text-muted); }
+  .btn-generate { background: linear-gradient(135deg, #6366f1, #a78bfa); color: white; padding: 14px 36px; font-size: 1.05rem; }
+  .btn-generate:hover { opacity: 0.9; transform: translateY(-1px); }
+  .output-section { margin-top: 24px; }
+  .output-file { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+  .output-file-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+    font-weight: 600; font-size: 0.9rem;
+  }
+  .output-file-header .copy-btn {
+    background: var(--accent); color: white; border: none; padding: 4px 12px;
+    border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600; font-family: inherit;
+  }
+  .output-file-header .copy-btn:hover { background: var(--accent-hover); }
+  .output-file pre {
+    padding: 16px; overflow-x: auto; font-size: 0.8rem; line-height: 1.55;
+    font-family: 'SF Mono','Fira Code','Cascadia Code', monospace;
+    white-space: pre-wrap; word-wrap: break-word; max-height: 500px; overflow-y: auto;
+  }
+  .download-all { text-align: center; margin-top: 32px; }
+  .btn-download {
+    background: var(--success); color: #000; padding: 14px 40px; font-size: 1.05rem;
+    border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-family: inherit;
+  }
+  .btn-download:hover { opacity: 0.9; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .summary-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .summary-chip .chip-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .summary-chip .chip-value { font-weight: 600; font-size: 0.95rem; }
+  .skills-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; margin-bottom: 24px; }
+  .skill-badge { background: var(--surface-2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 0.8rem; }
+  .skill-badge.hard { border-color: var(--accent); color: var(--accent-hover); }
+  .skill-badge.soft { border-color: var(--border); color: var(--text-muted); }
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--success); color: #000;
+    padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem;
+    opacity: 0; transform: translateY(10px); transition: all 0.3s; pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  /* File tree for skills */
+  .file-tree { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.82rem; font-family: 'SF Mono', monospace; line-height: 1.8; color: var(--text-muted); }
+  .file-tree .folder { color: var(--accent-hover); }
+  .file-tree .file { color: var(--text); }
+  .skill-count { display: inline-block; background: var(--accent); color: white; border-radius: 12px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; margin-left: 8px; }
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+  .tab {
+    padding: 10px 20px; cursor: pointer; font-size: 0.85rem; font-weight: 600;
+    color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Launchpad Project Starter</h1>
+    <p>Configure your stack &mdash; generates project config + all 17 skills adapted to your choices</p>
+  </header>
+  <div class="step-labels" id="stepLabels"></div>
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- Step 0: Project Info -->
+  <div class="step active" data-step="0">
+    <h2>Project Info</h2>
+    <p class="subtitle">Basic details about what you're building</p>
+    <div class="input-group">
+      <label>Project Name</label>
+      <input type="text" id="projectName" placeholder="e.g. MyApp, RocketCRM">
+    </div>
+    <div class="input-group">
+      <label>One-Line Description</label>
+      <input type="text" id="projectDesc" placeholder="e.g. A CRM for freelancers to track leads">
+    </div>
+    <div class="input-group"><label>Project Type</label></div>
+    <div class="options-grid">
+      <div class="option-card" data-group="projectType" data-value="web-app"><span class="icon">🌐</span><div class="label">Web App</div><div class="desc">Full-stack web application</div></div>
+      <div class="option-card" data-group="projectType" data-value="api-only"><span class="icon">🔌</span><div class="label">API Only</div><div class="desc">Backend REST/GraphQL API</div></div>
+      <div class="option-card" data-group="projectType" data-value="mobile-app"><span class="icon">📱</span><div class="label">Mobile App</div><div class="desc">Cross-platform mobile</div></div>
+      <div class="option-card" data-group="projectType" data-value="cli-tool"><span class="icon">💻</span><div class="label">CLI Tool</div><div class="desc">Command-line application</div></div>
+      <div class="option-card" data-group="projectType" data-value="monorepo"><span class="icon">📦</span><div class="label">Monorepo</div><div class="desc">Multi-package workspace</div></div>
+      <div class="option-card" data-group="projectType" data-value="microservices"><span class="icon">🔗</span><div class="label">Microservices</div><div class="desc">Distributed services</div></div>
+    </div>
+    <div class="btn-row"><div></div><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 1: Language -->
+  <div class="step" data-step="1">
+    <h2>Primary Language</h2>
+    <p class="subtitle">Choose the main language for your project</p>
+    <div class="options-grid">
+      <div class="option-card" data-group="language" data-value="typescript"><span class="icon">🟦</span><div class="label">TypeScript</div><div class="desc">Type-safe JavaScript</div></div>
+      <div class="option-card" data-group="language" data-value="javascript"><span class="icon">🟨</span><div class="label">JavaScript</div><div class="desc">Plain JS / ES2024</div></div>
+      <div class="option-card" data-group="language" data-value="python"><span class="icon">🐍</span><div class="label">Python</div><div class="desc">Django, FastAPI, Flask</div></div>
+      <div class="option-card" data-group="language" data-value="java"><span class="icon">☕</span><div class="label">Java</div><div class="desc">Spring Boot, Quarkus</div></div>
+      <div class="option-card" data-group="language" data-value="go"><span class="icon">🐹</span><div class="label">Go</div><div class="desc">Gin, Echo, Chi</div></div>
+      <div class="option-card" data-group="language" data-value="rust"><span class="icon">🦀</span><div class="label">Rust</div><div class="desc">Actix, Axum, Rocket</div></div>
+      <div class="option-card" data-group="language" data-value="csharp"><span class="icon">🟪</span><div class="label">C# / .NET</div><div class="desc">ASP.NET Core</div></div>
+      <div class="option-card" data-group="language" data-value="ruby"><span class="icon">💎</span><div class="label">Ruby</div><div class="desc">Rails, Sinatra</div></div>
+      <div class="option-card" data-group="language" data-value="php"><span class="icon">🐘</span><div class="label">PHP</div><div class="desc">Laravel, Symfony</div></div>
+      <div class="option-card" data-group="language" data-value="kotlin"><span class="icon">🟣</span><div class="label">Kotlin</div><div class="desc">Spring Boot, Ktor</div></div>
+      <div class="option-card" data-group="language" data-value="swift"><span class="icon">🍎</span><div class="label">Swift</div><div class="desc">Vapor, native iOS</div></div>
+      <div class="option-card" data-group="language" data-value="elixir"><span class="icon">🧪</span><div class="label">Elixir</div><div class="desc">Phoenix LiveView</div></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 2: Backend -->
+  <div class="step" data-step="2">
+    <h2>Backend Framework</h2>
+    <p class="subtitle">Pick a framework for your backend</p>
+    <div class="options-grid" id="backendOptions"></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 3: Frontend -->
+  <div class="step" data-step="3">
+    <h2>Frontend Framework</h2>
+    <p class="subtitle">Choose your UI layer</p>
+    <div class="options-grid" id="frontendOptions"></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 4: Database -->
+  <div class="step" data-step="4">
+    <h2>Database</h2>
+    <p class="subtitle">Primary data store</p>
+    <div class="options-grid">
+      <div class="option-card" data-group="database" data-value="postgresql"><span class="icon">🐘</span><div class="label">PostgreSQL</div><div class="desc">Relational, rock-solid</div></div>
+      <div class="option-card" data-group="database" data-value="mysql"><span class="icon">🐬</span><div class="label">MySQL</div><div class="desc">Classic relational</div></div>
+      <div class="option-card" data-group="database" data-value="mongodb"><span class="icon">🍃</span><div class="label">MongoDB</div><div class="desc">Document store</div></div>
+      <div class="option-card" data-group="database" data-value="sqlite"><span class="icon">🪶</span><div class="label">SQLite</div><div class="desc">Embedded, zero-config</div></div>
+      <div class="option-card" data-group="database" data-value="redis"><span class="icon">🔴</span><div class="label">Redis</div><div class="desc">In-memory key-value</div></div>
+      <div class="option-card" data-group="database" data-value="dynamodb"><span class="icon">⚡</span><div class="label">DynamoDB</div><div class="desc">AWS managed NoSQL</div></div>
+      <div class="option-card" data-group="database" data-value="supabase"><span class="icon">⚡</span><div class="label">Supabase</div><div class="desc">Postgres + auth + realtime</div></div>
+      <div class="option-card" data-group="database" data-value="none"><span class="icon">🚫</span><div class="label">None</div><div class="desc">No database</div></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 5: Features -->
+  <div class="step" data-step="5">
+    <h2>Features &amp; Integrations</h2>
+    <p class="subtitle">Select all that apply</p>
+    <p class="multi-hint">Click multiple to select</p>
+    <div class="options-grid">
+      <div class="option-card" data-group="features" data-value="auth" data-multi="true"><span class="icon">🔐</span><div class="label">Auth</div><div class="desc">Login, JWT, sessions</div></div>
+      <div class="option-card" data-group="features" data-value="payments" data-multi="true"><span class="icon">💳</span><div class="label">Payments</div><div class="desc">Stripe, billing</div></div>
+      <div class="option-card" data-group="features" data-value="email" data-multi="true"><span class="icon">📧</span><div class="label">Email</div><div class="desc">Transactional emails</div></div>
+      <div class="option-card" data-group="features" data-value="file-upload" data-multi="true"><span class="icon">📁</span><div class="label">File Upload</div><div class="desc">Cloud storage</div></div>
+      <div class="option-card" data-group="features" data-value="websockets" data-multi="true"><span class="icon">🔄</span><div class="label">WebSockets</div><div class="desc">Real-time</div></div>
+      <div class="option-card" data-group="features" data-value="background-jobs" data-multi="true"><span class="icon">⏱</span><div class="label">Background Jobs</div><div class="desc">Queues, cron</div></div>
+      <div class="option-card" data-group="features" data-value="search" data-multi="true"><span class="icon">🔍</span><div class="label">Search</div><div class="desc">Full-text search</div></div>
+      <div class="option-card" data-group="features" data-value="caching" data-multi="true"><span class="icon">💾</span><div class="label">Caching</div><div class="desc">Redis cache</div></div>
+      <div class="option-card" data-group="features" data-value="graphql" data-multi="true"><span class="icon">◈</span><div class="label">GraphQL</div><div class="desc">GraphQL API</div></div>
+      <div class="option-card" data-group="features" data-value="docker" data-multi="true"><span class="icon">🐳</span><div class="label">Docker</div><div class="desc">Containers</div></div>
+      <div class="option-card" data-group="features" data-value="ci-cd" data-multi="true"><span class="icon">🔁</span><div class="label">CI/CD</div><div class="desc">GitHub Actions</div></div>
+      <div class="option-card" data-group="features" data-value="analytics" data-multi="true"><span class="icon">📊</span><div class="label">Analytics</div><div class="desc">Usage tracking</div></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-primary" onclick="nextStep()">Next &rarr;</button></div>
+  </div>
+
+  <!-- Step 6: Deploy -->
+  <div class="step" data-step="6">
+    <h2>Deployment Target</h2>
+    <p class="subtitle">Where will this run in production?</p>
+    <div class="options-grid">
+      <div class="option-card" data-group="deploy" data-value="vercel"><span class="icon">▲</span><div class="label">Vercel</div><div class="desc">Best for Next.js</div></div>
+      <div class="option-card" data-group="deploy" data-value="railway"><span class="icon">🚂</span><div class="label">Railway</div><div class="desc">Simple containers</div></div>
+      <div class="option-card" data-group="deploy" data-value="aws"><span class="icon">☁️</span><div class="label">AWS</div><div class="desc">ECS, Lambda, EC2</div></div>
+      <div class="option-card" data-group="deploy" data-value="gcp"><span class="icon">🌐</span><div class="label">Google Cloud</div><div class="desc">Cloud Run, GKE</div></div>
+      <div class="option-card" data-group="deploy" data-value="azure"><span class="icon">🔷</span><div class="label">Azure</div><div class="desc">App Service, AKS</div></div>
+      <div class="option-card" data-group="deploy" data-value="fly"><span class="icon">🪁</span><div class="label">Fly.io</div><div class="desc">Edge containers</div></div>
+      <div class="option-card" data-group="deploy" data-value="docker-self"><span class="icon">🐳</span><div class="label">Self-hosted</div><div class="desc">Docker on your server</div></div>
+      <div class="option-card" data-group="deploy" data-value="undecided"><span class="icon">🤷</span><div class="label">Undecided</div><div class="desc">Choose later</div></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="prevStep()">&larr; Back</button><button class="btn btn-generate" onclick="generate()">Generate Everything</button></div>
+  </div>
+
+  <!-- Step 7: Output -->
+  <div class="step" data-step="7">
+    <h2>Your Generated Boilerplate</h2>
+    <p class="subtitle">Project config + all skills adapted to your stack</p>
+    <div class="summary-grid" id="summaryGrid"></div>
+    <h3 style="margin-bottom:8px;">Skills Generated <span class="skill-count" id="skillCount">17</span></h3>
+    <div class="skills-list" id="skillsList"></div>
+    <hr class="section-divider">
+    <div class="tabs" id="outputTabs">
+      <div class="tab active" data-tab="config" onclick="switchTab('config')">Project Config</div>
+      <div class="tab" data-tab="skills-hard" onclick="switchTab('skills-hard')">Hard Skills</div>
+      <div class="tab" data-tab="skills-soft" onclick="switchTab('skills-soft')">Soft Skills</div>
+    </div>
+    <div class="tab-panel active" data-tab="config" id="configPanel"></div>
+    <div class="tab-panel" data-tab="skills-hard" id="skillsHardPanel"></div>
+    <div class="tab-panel" data-tab="skills-soft" id="skillsSoftPanel"></div>
+    <div class="download-all">
+      <button class="btn btn-download" onclick="downloadAll()">Download All as ZIP</button>
+    </div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="goToStep(0)">&larr; Start Over</button><div></div></div>
+  </div>
+</div>
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+const state = { step:0, projectName:'', projectDesc:'', projectType:'', language:'', backend:'', frontend:'', database:'', features:[], deploy:'' };
+const TOTAL_STEPS = 8;
+const STEP_NAMES = ['Project','Language','Backend','Frontend','Database','Features','Deploy','Output'];
+const generatedFiles = {};
+
+// ═══════════════════════════════════════════════════════════════════════
+// CATALOGS
+// ═══════════════════════════════════════════════════════════════════════
+const BACKEND_FRAMEWORKS = {
+  typescript: [
+    {value:'nestjs',icon:'🐈',label:'NestJS',desc:'DI, decorators'},
+    {value:'express',icon:'⚡',label:'Express',desc:'Minimal, flexible'},
+    {value:'fastify',icon:'🚀',label:'Fastify',desc:'High-perf, schema'},
+    {value:'hono',icon:'🔥',label:'Hono',desc:'Edge-first'},
+  ],
+  javascript: [
+    {value:'express',icon:'⚡',label:'Express',desc:'Most popular'},
+    {value:'fastify',icon:'🚀',label:'Fastify',desc:'High-perf'},
+    {value:'hono',icon:'🔥',label:'Hono',desc:'Edge-first'},
+  ],
+  python: [
+    {value:'fastapi',icon:'⚡',label:'FastAPI',desc:'Async, OpenAPI'},
+    {value:'django',icon:'🎸',label:'Django',desc:'Batteries-included'},
+    {value:'flask',icon:'🧪',label:'Flask',desc:'Micro-framework'},
+  ],
+  java: [
+    {value:'spring-boot',icon:'🌿',label:'Spring Boot',desc:'Enterprise standard'},
+    {value:'quarkus',icon:'⚡',label:'Quarkus',desc:'Cloud-native, fast'},
+    {value:'micronaut',icon:'🔬',label:'Micronaut',desc:'Compile-time DI'},
+  ],
+  go: [
+    {value:'gin',icon:'🍸',label:'Gin',desc:'Fast, popular'},
+    {value:'echo',icon:'📢',label:'Echo',desc:'Minimal'},
+    {value:'chi',icon:'🐉',label:'Chi',desc:'Idiomatic'},
+    {value:'fiber',icon:'💪',label:'Fiber',desc:'Express-like'},
+  ],
+  rust: [
+    {value:'axum',icon:'⚙️',label:'Axum',desc:'Tokio, tower'},
+    {value:'actix-web',icon:'🎭',label:'Actix Web',desc:'Fastest'},
+    {value:'rocket',icon:'🚀',label:'Rocket',desc:'Ergonomic'},
+  ],
+  csharp: [
+    {value:'aspnet-core',icon:'🟪',label:'ASP.NET Core',desc:'Full framework'},
+    {value:'aspnet-minimal',icon:'⚡',label:'Minimal API',desc:'Lightweight'},
+  ],
+  ruby: [
+    {value:'rails',icon:'🛤️',label:'Rails',desc:'Convention > config'},
+    {value:'sinatra',icon:'🎤',label:'Sinatra',desc:'Micro'},
+  ],
+  php: [
+    {value:'laravel',icon:'🔺',label:'Laravel',desc:'Full-featured'},
+    {value:'symfony',icon:'🎵',label:'Symfony',desc:'Enterprise'},
+  ],
+  kotlin: [
+    {value:'spring-boot-kt',icon:'🌿',label:'Spring Boot',desc:'Kotlin Spring'},
+    {value:'ktor',icon:'🚀',label:'Ktor',desc:'JetBrains, coroutines'},
+  ],
+  swift: [
+    {value:'vapor',icon:'💨',label:'Vapor',desc:'Most popular Swift'},
+  ],
+  elixir: [
+    {value:'phoenix',icon:'🔥',label:'Phoenix',desc:'Real-time, productive'},
+  ],
+};
+
+const FRONTEND_FRAMEWORKS = {
+  typescript: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'React SSR'},
+    {value:'react-vite',icon:'⚛️',label:'React+Vite',desc:'SPA'},
+    {value:'svelte',icon:'🟠',label:'SvelteKit',desc:'Compiled'},
+    {value:'vue-nuxt',icon:'💚',label:'Nuxt.js',desc:'Vue SSR'},
+    {value:'angular',icon:'🔴',label:'Angular',desc:'Enterprise'},
+    {value:'astro',icon:'🚀',label:'Astro',desc:'Content-first'},
+  ],
+  javascript: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'React SSR'},
+    {value:'react-vite',icon:'⚛️',label:'React+Vite',desc:'SPA'},
+    {value:'vue-nuxt',icon:'💚',label:'Nuxt.js',desc:'Vue SSR'},
+    {value:'svelte',icon:'🟠',label:'SvelteKit',desc:'Compiled'},
+  ],
+  python: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+    {value:'htmx',icon:'📄',label:'HTMX',desc:'Server-driven'},
+    {value:'django-templates',icon:'🎸',label:'Django Templates',desc:'Built-in'},
+  ],
+  java: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate React'},
+    {value:'react-vite',icon:'⚛️',label:'React+Vite',desc:'SPA'},
+    {value:'thymeleaf',icon:'🌿',label:'Thymeleaf',desc:'Spring templates'},
+    {value:'angular',icon:'🔴',label:'Angular',desc:'Enterprise SPA'},
+    {value:'htmx',icon:'📄',label:'HTMX',desc:'Server-driven'},
+    {value:'vaadin',icon:'🖥️',label:'Vaadin',desc:'Java-first UI'},
+  ],
+  go: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+    {value:'react-vite',icon:'⚛️',label:'React+Vite',desc:'SPA'},
+    {value:'htmx',icon:'📄',label:'HTMX',desc:'Go templates+HTMX'},
+    {value:'templ',icon:'📝',label:'Templ',desc:'Type-safe templates'},
+  ],
+  rust: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+    {value:'leptos',icon:'🦀',label:'Leptos',desc:'Rust WASM'},
+    {value:'yew',icon:'🌳',label:'Yew',desc:'WASM components'},
+  ],
+  csharp: [
+    {value:'blazor',icon:'🔥',label:'Blazor',desc:'.NET fullstack'},
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+    {value:'angular',icon:'🔴',label:'Angular',desc:'Enterprise'},
+  ],
+  ruby: [
+    {value:'hotwire',icon:'⚡',label:'Hotwire',desc:'Rails native'},
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+  ],
+  php: [
+    {value:'livewire',icon:'⚡',label:'Livewire',desc:'Laravel fullstack'},
+    {value:'inertia',icon:'🔄',label:'Inertia.js',desc:'SPA bridge'},
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+  ],
+  kotlin: [
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+    {value:'thymeleaf',icon:'🌿',label:'Thymeleaf',desc:'Server-side'},
+  ],
+  swift: [
+    {value:'swiftui',icon:'🍎',label:'SwiftUI',desc:'Native Apple'},
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Web frontend'},
+  ],
+  elixir: [
+    {value:'phoenix-liveview-fe',icon:'⚡',label:'LiveView',desc:'Server-rendered SPA'},
+    {value:'nextjs',icon:'▲',label:'Next.js',desc:'Separate frontend'},
+  ],
+};
+
+const NONE_OPT = {value:'none',icon:'🚫',label:'None / Skip',desc:'Not needed'};
+
+const ORM_MAP = {
+  typescript:{nestjs:'TypeORM',express:'Prisma',fastify:'Prisma',hono:'Drizzle'},
+  javascript:{express:'Sequelize',fastify:'Prisma',hono:'Drizzle'},
+  python:{fastapi:'SQLAlchemy',django:'Django ORM',flask:'SQLAlchemy'},
+  java:{'spring-boot':'Spring Data JPA + Hibernate',quarkus:'Hibernate with Panache',micronaut:'Micronaut Data'},
+  go:{gin:'GORM',echo:'GORM',chi:'sqlx',fiber:'GORM'},
+  rust:{axum:'SQLx','actix-web':'Diesel',rocket:'Diesel'},
+  csharp:{'aspnet-core':'Entity Framework Core','aspnet-minimal':'Entity Framework Core'},
+  ruby:{rails:'ActiveRecord',sinatra:'Sequel'},
+  php:{laravel:'Eloquent',symfony:'Doctrine'},
+  kotlin:{'spring-boot-kt':'Spring Data JPA',ktor:'Exposed'},
+  swift:{vapor:'Fluent'},
+  elixir:{phoenix:'Ecto'},
+};
+const BUILD_MAP = {typescript:'pnpm',javascript:'pnpm',python:'uv / pip',java:'Maven / Gradle',go:'Go Modules',rust:'Cargo',csharp:'dotnet CLI',ruby:'Bundler',php:'Composer',kotlin:'Gradle',swift:'Swift PM',elixir:'Mix'};
+const TEST_MAP = {typescript:'Vitest',javascript:'Vitest',python:'pytest',java:'JUnit 5 + Mockito',go:'Go testing + testify',rust:'cargo test',csharp:'xUnit + Moq',ruby:'RSpec',php:'PHPUnit / Pest',kotlin:'JUnit 5 + MockK',swift:'XCTest',elixir:'ExUnit'};
+const LINT_MAP = {typescript:'ESLint + Prettier',javascript:'ESLint + Prettier',python:'Ruff + Black',java:'Checkstyle + SpotBugs',go:'golangci-lint',rust:'clippy + rustfmt',csharp:'.NET Analyzers',ruby:'RuboCop',php:'PHP-CS-Fixer + PHPStan',kotlin:'ktlint + detekt',swift:'SwiftLint',elixir:'Credo + mix format'};
+const EXT_MAP = {typescript:'ts',javascript:'js',python:'py',java:'java',go:'go',rust:'rs',csharp:'cs',ruby:'rb',php:'php',kotlin:'kt',swift:'swift',elixir:'ex'};
+const TEST_EXT_MAP = {typescript:'.test.ts',javascript:'.test.js',python:'_test.py',java:'Test.java',go:'_test.go',rust:'(#[cfg(test)])',csharp:'Tests.cs',ruby:'_spec.rb',php:'Test.php',kotlin:'Test.kt',swift:'Tests.swift',elixir:'_test.exs'};
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+function renderProgress(){
+  const bar=document.getElementById('progressBar'), labels=document.getElementById('stepLabels');
+  bar.innerHTML=''; labels.innerHTML='';
+  for(let i=0;i<TOTAL_STEPS;i++){
+    const d=document.createElement('div'); d.className='progress-step'+(i<state.step?' done':i===state.step?' active':''); bar.appendChild(d);
+    const s=document.createElement('span'); s.textContent=STEP_NAMES[i]; s.className=i<state.step?'done':i===state.step?'active':''; labels.appendChild(s);
+  }
+}
+function showStep(n){ document.querySelectorAll('.step').forEach(s=>s.classList.remove('active')); const t=document.querySelector(`.step[data-step="${n}"]`); if(t)t.classList.add('active'); state.step=n; renderProgress(); }
+function saveInputs(){ state.projectName=document.getElementById('projectName').value; state.projectDesc=document.getElementById('projectDesc').value; }
+function goToStep(n){ saveInputs(); showStep(n); }
+function nextStep(){ saveInputs(); const next=state.step+1; if(next===2) populateOptions('backendOptions',BACKEND_FRAMEWORKS,'backend'); if(next===3) populateOptions('frontendOptions',FRONTEND_FRAMEWORKS,'frontend'); showStep(next); }
+function prevStep(){ saveInputs(); showStep(state.step-1); }
+
+function populateOptions(containerId, catalog, groupName){
+  const el=document.getElementById(containerId), fws=catalog[state.language]||[];
+  el.innerHTML='';
+  [...fws,NONE_OPT].forEach(f=>{
+    const c=document.createElement('div'); c.className='option-card'+(state[groupName]===f.value?' selected':'');
+    c.dataset.group=groupName; c.dataset.value=f.value;
+    c.innerHTML=`<span class="icon">${f.icon}</span><div class="label">${f.label}</div><div class="desc">${f.desc}</div>`;
+    c.addEventListener('click',()=>handleCardClick(c)); el.appendChild(c);
+  });
+}
+
+function handleCardClick(card){
+  const g=card.dataset.group, v=card.dataset.value, multi=card.dataset.multi==='true';
+  if(multi){ card.classList.toggle('selected'); if(!state[g])state[g]=[]; if(card.classList.contains('selected')){state[g].push(v);}else{state[g]=state[g].filter(x=>x!==v);} }
+  else{ card.parentElement.querySelectorAll('.option-card').forEach(c=>c.classList.remove('selected')); card.classList.add('selected'); state[g]=v; }
+}
+document.querySelectorAll('.option-card').forEach(c=>c.addEventListener('click',()=>handleCardClick(c)));
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.dataset.tab===tab));
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SKILL GENERATORS
+// ═══════════════════════════════════════════════════════════════════════
+
+function G(){ // shorthand for current state
+  const L=state.language||'typescript', B=state.backend||'none', F=state.frontend||'none';
+  const orm=(ORM_MAP[L]&&ORM_MAP[L][B])||'N/A';
+  const ext=EXT_MAP[L]||'ts', testExt=TEST_EXT_MAP[L]||'.test.ts';
+  const testFw=TEST_MAP[L]||'Vitest', lintTool=LINT_MAP[L]||'ESLint';
+  return {L,B,F,orm,ext,testExt,testFw,lintTool};
+}
+
+// ── Stack-specific: backend-patterns ───────────────────────────────────
+function genBackendPatterns(){
+  const {L,B,orm,ext}=G();
+  if(B==='none') return null;
+
+  const stackPatterns = {
+    // ── JAVA ──
+    'java': {
+      'spring-boot': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - spring-boot
+  - java
+severity: soft
+triggers:
+  - "Spring Boot"
+  - "backend"
+  - "API"
+  - "service"
+  - "controller"
+  - "JPA"
+  - "database"
+description: >
+  Use before writing any Spring Boot backend code. Enforces layered
+  architecture, DTO patterns, service/controller separation, Spring Data JPA
+  repository pattern, and exception handling conventions.
+---
+
+# Backend Patterns — Spring Boot
+
+**Controllers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Project Structure
+
+\`\`\`
+src/main/java/com/example/{project}/
+  {domain}/
+    dto/
+      Create{Domain}Request.java
+      Update{Domain}Request.java
+      {Domain}Response.java
+    entity/
+      {Domain}.java
+    repository/
+      {Domain}Repository.java
+    service/
+      {Domain}Service.java
+    controller/
+      {Domain}Controller.java
+  common/
+    exception/
+      GlobalExceptionHandler.java
+      ResourceNotFoundException.java
+    dto/
+      ErrorResponse.java
+      PageResponse.java
+\`\`\`
+
+Every domain is a self-contained package. Cross-domain access goes through
+injected services — never direct repository access across packages.
+
+---
+
+## Controller Pattern
+
+\`\`\`java
+// Controllers ONLY: routing, validation annotations, response shaping
+// Never: business logic, DB queries, complex conditionals
+
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
+    private final UserService userService;
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponse> create(
+            @Valid @RequestBody CreateUserRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(userService.create(request));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<UserResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+\`\`\`
+
+---
+
+## Service Pattern
+
+\`\`\`java
+// Services: ALL business logic, authorization checks, orchestration
+// Never: HTTP concerns, response shaping for wire
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserResponse findById(UUID id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email already in use");
+        }
+        User user = User.builder()
+            .email(request.getEmail())
+            .passwordHash(passwordEncoder.encode(request.getPassword()))
+            .name(request.getName())
+            .build();
+        return UserResponse.from(userRepository.save(user));
+    }
+}
+\`\`\`
+
+---
+
+## DTO Pattern
+
+\`\`\`java
+// Request DTOs validated with Jakarta Validation
+public record CreateUserRequest(
+    @NotBlank @Email String email,
+    @NotBlank @Size(min = 8, max = 100) String password,
+    @NotBlank @Size(max = 100) String name
+) {}
+
+// Response DTO hides sensitive fields — never expose entities directly
+public record UserResponse(
+    UUID id, String email, String name, Instant createdAt
+) {
+    public static UserResponse from(User entity) {
+        return new UserResponse(
+            entity.getId(), entity.getEmail(),
+            entity.getName(), entity.getCreatedAt()
+        );
+    }
+}
+// password, passwordHash → never in response DTO
+\`\`\`
+
+---
+
+## Entity Pattern
+
+\`\`\`java
+@Entity
+@Table(name = "users")
+@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+public class User {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(unique = true, nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private String passwordHash;
+
+    @Column(nullable = false)
+    private String name;
+
+    @CreationTimestamp
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    private Instant updatedAt;
+
+    // Soft delete
+    private Instant deletedAt;
+}
+\`\`\`
+
+---
+
+## Repository Pattern
+
+\`\`\`java
+public interface UserRepository extends JpaRepository<User, UUID> {
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+
+    // Cursor-based pagination
+    @Query("SELECT u FROM User u WHERE u.createdAt < :cursor ORDER BY u.createdAt DESC")
+    List<User> findByCursorBefore(@Param("cursor") Instant cursor, Pageable pageable);
+}
+\`\`\`
+
+---
+
+## Exception Handling
+
+\`\`\`java
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(new ErrorResponse(ex.getCode(), ex.getMessage(), 404));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+            .map(e -> e.getField() + ": " + e.getDefaultMessage())
+            .collect(Collectors.joining(", "));
+        return ResponseEntity.badRequest()
+            .body(new ErrorResponse("VALIDATION_ERROR", message, 400));
+    }
+}
+
+public record ErrorResponse(String code, String message, int statusCode) {}
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  controller_routes_only: true
+  service_has_business_logic: true
+  dtos_validated_with_jakarta: true
+  response_dtos_hide_sensitive_fields: true
+  entities_not_returned_directly: true
+  pagination_is_cursor_based: true
+  no_n_plus_one_queries: true
+  errors_use_global_handler: true
+  transactions_annotated: true
+  overall: pass | fail
+\`\`\``,
+      'quarkus': null, // falls through to generic
+      'micronaut': null,
+    },
+
+    // ── PYTHON ──
+    'python': {
+      'fastapi': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - fastapi
+  - python
+severity: soft
+triggers:
+  - "FastAPI"
+  - "backend"
+  - "API"
+  - "router"
+  - "service"
+  - "SQLAlchemy"
+description: >
+  Use before writing any FastAPI backend code. Enforces router/service/repo
+  separation, Pydantic model validation, SQLAlchemy async patterns, and
+  dependency injection via Depends().
+---
+
+# Backend Patterns — FastAPI
+
+**Routers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Project Structure
+
+\`\`\`
+src/
+  {domain}/
+    router.py
+    service.py
+    repository.py
+    schemas.py        # Pydantic models (request/response)
+    models.py         # SQLAlchemy models
+  core/
+    config.py
+    database.py
+    exceptions.py
+    deps.py           # Dependency injection
+  main.py
+\`\`\`
+
+---
+
+## Router Pattern
+
+\`\`\`python
+# Routers ONLY: routing, auth deps, input validation, response shaping
+# Never: business logic, DB queries
+
+router = APIRouter(prefix="/api/v1/users", tags=["users"])
+
+@router.get("/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+    current_user: User = Depends(get_current_user),
+):
+    return await service.find_by_id(user_id, current_user)
+
+@router.post("/", response_model=UserResponse, status_code=201)
+async def create_user(
+    body: CreateUserRequest,
+    service: UserService = Depends(get_user_service),
+):
+    return await service.create(body)
+\`\`\`
+
+---
+
+## Schema Pattern (Pydantic)
+
+\`\`\`python
+class CreateUserRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=100)
+    name: str = Field(min_length=1, max_length=100)
+
+class UserResponse(BaseModel):
+    id: UUID
+    email: str
+    name: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def from_entity(cls, entity: User) -> "UserResponse":
+        return cls.model_validate(entity)
+# password_hash -> never in response schema
+\`\`\`
+
+---
+
+## Service Pattern
+
+\`\`\`python
+class UserService:
+    def __init__(self, repo: UserRepository):
+        self.repo = repo
+
+    async def find_by_id(self, user_id: UUID, requesting_user: User) -> UserResponse:
+        if requesting_user.id != user_id and not requesting_user.is_admin:
+            raise ForbiddenError()
+        user = await self.repo.find_by_id(user_id)
+        if not user:
+            raise NotFoundError(f"User {user_id} not found")
+        return UserResponse.from_entity(user)
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  routers_route_only: true
+  service_has_business_logic: true
+  schemas_validated_with_pydantic: true
+  response_schemas_hide_sensitive: true
+  models_not_returned_directly: true
+  depends_used_for_di: true
+  async_await_consistent: true
+  overall: pass | fail
+\`\`\``,
+      'django': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - django
+  - python
+severity: soft
+triggers:
+  - "Django"
+  - "backend"
+  - "views"
+  - "serializers"
+  - "models"
+description: >
+  Use before writing any Django backend code. Enforces app structure,
+  serializer validation, view/service separation, model patterns, and
+  DRF conventions.
+---
+
+# Backend Patterns — Django
+
+**Views route. Services work. Models store. Serializers validate.**
+
+---
+
+## App Structure
+
+\`\`\`
+{domain}/
+  models.py
+  serializers.py
+  views.py
+  services.py
+  urls.py
+  tests/
+    test_views.py
+    test_services.py
+\`\`\`
+
+---
+
+## View Pattern (DRF)
+
+\`\`\`python
+class UserViewSet(viewsets.ModelViewSet):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True)
+
+    def perform_create(self, serializer):
+        # Delegate business logic to service
+        UserService.create_user(serializer.validated_data, self.request.user)
+\`\`\`
+
+---
+
+## Serializer Pattern
+
+\`\`\`python
+class CreateUserSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    name = serializers.CharField(max_length=100)
+
+class UserResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name', 'created_at']
+        # password_hash NEVER included
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  views_route_only: true
+  service_has_business_logic: true
+  serializers_validate_input: true
+  response_hides_sensitive: true
+  models_not_returned_directly: true
+  querysets_filtered: true
+  overall: pass | fail
+\`\`\``,
+      'flask': null,
+    },
+
+    // ── GO ──
+    'go': {
+      '_default': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - go
+severity: soft
+triggers:
+  - "Go"
+  - "backend"
+  - "handler"
+  - "service"
+  - "repository"
+description: >
+  Use before writing any Go backend code. Enforces handler/service/repo
+  separation, request/response struct patterns, error handling conventions,
+  and interface-driven design.
+---
+
+# Backend Patterns — Go
+
+**Handlers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Project Structure
+
+\`\`\`
+internal/
+  {domain}/
+    handler.go        // HTTP handlers
+    service.go        // Business logic
+    repository.go     // Data access
+    model.go          // Domain types
+    dto.go            // Request/response types
+  middleware/
+  config/
+cmd/
+  server/
+    main.go
+\`\`\`
+
+---
+
+## Handler Pattern
+
+\`\`\`go
+// Handlers ONLY: parse request, call service, write response
+// Never: business logic, DB queries
+
+func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+    id := chi.URLParam(r, "id")
+    uid, err := uuid.Parse(id)
+    if err != nil {
+        writeError(w, http.StatusBadRequest, "invalid user id")
+        return
+    }
+    user, err := h.service.FindByID(r.Context(), uid)
+    if err != nil {
+        handleServiceError(w, err)
+        return
+    }
+    writeJSON(w, http.StatusOK, toUserResponse(user))
+}
+\`\`\`
+
+---
+
+## Service Pattern
+
+\`\`\`go
+type UserService struct {
+    repo UserRepository
+}
+
+func (s *UserService) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
+    user, err := s.repo.FindByID(ctx, id)
+    if err != nil {
+        return nil, fmt.Errorf("find user %s: %w", id, err)
+    }
+    return user, nil
+}
+\`\`\`
+
+---
+
+## Error Handling
+
+\`\`\`go
+// Use sentinel errors + custom types, never return raw strings
+var (
+    ErrNotFound    = errors.New("not found")
+    ErrConflict    = errors.New("conflict")
+    ErrForbidden   = errors.New("forbidden")
+)
+
+// Always wrap errors with context
+return fmt.Errorf("create user: %w", err)
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  handlers_route_only: true
+  service_has_business_logic: true
+  request_structs_validated: true
+  response_hides_sensitive: true
+  errors_wrapped_with_context: true
+  interfaces_for_dependencies: true
+  overall: pass | fail
+\`\`\``,
+    },
+
+    // ── RUST ──
+    'rust': {
+      '_default': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - rust
+severity: soft
+triggers:
+  - "Rust"
+  - "backend"
+  - "handler"
+  - "service"
+description: >
+  Use before writing any Rust backend code. Enforces handler/service/repo
+  separation, serde-based DTOs, error handling with thiserror, and
+  trait-based dependency injection.
+---
+
+# Backend Patterns — Rust
+
+**Handlers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Project Structure
+
+\`\`\`
+src/
+  {domain}/
+    mod.rs
+    handler.rs
+    service.rs
+    repository.rs
+    model.rs
+    dto.rs
+  error.rs
+  lib.rs
+  main.rs
+\`\`\`
+
+---
+
+## Handler Pattern
+
+\`\`\`rust
+// Handlers: extract request, call service, return response
+async fn get_user(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<UserResponse>, AppError> {
+    let user = state.user_service.find_by_id(id).await?;
+    Ok(Json(UserResponse::from(user)))
+}
+\`\`\`
+
+---
+
+## Error Handling
+
+\`\`\`rust
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error("not found: {0}")]
+    NotFound(String),
+    #[error("conflict: {0}")]
+    Conflict(String),
+    #[error("internal: {0}")]
+    Internal(#[from] anyhow::Error),
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, code) = match &self {
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, "NOT_FOUND"),
+            AppError::Conflict(_) => (StatusCode::CONFLICT, "CONFLICT"),
+            AppError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL"),
+        };
+        (status, Json(ErrorResponse { code, message: self.to_string() })).into_response()
+    }
+}
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  handlers_route_only: true
+  service_has_business_logic: true
+  dtos_use_serde: true
+  errors_use_thiserror: true
+  traits_for_dependencies: true
+  overall: pass | fail
+\`\`\``,
+    },
+
+    // ── C# ──
+    'csharp': {
+      '_default': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - aspnet-core
+  - csharp
+severity: soft
+triggers:
+  - "ASP.NET"
+  - "backend"
+  - "controller"
+  - "service"
+  - "Entity Framework"
+description: >
+  Use before writing any ASP.NET Core backend code. Enforces controller/service
+  separation, DTO validation with FluentValidation or DataAnnotations, EF Core
+  repository pattern, and middleware-based error handling.
+---
+
+# Backend Patterns — ASP.NET Core
+
+**Controllers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Controller Pattern
+
+\`\`\`csharp
+[ApiController]
+[Route("api/v1/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService) => _userService = userService;
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<UserResponse>> GetById(Guid id)
+    {
+        var user = await _userService.FindByIdAsync(id);
+        return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserResponse>> Create([FromBody] CreateUserRequest request)
+    {
+        var user = await _userService.CreateAsync(request);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+    }
+}
+\`\`\`
+
+---
+
+## DTO Pattern
+
+\`\`\`csharp
+public record CreateUserRequest(
+    [Required][EmailAddress] string Email,
+    [Required][MinLength(8)] string Password,
+    [Required][MaxLength(100)] string Name
+);
+
+public record UserResponse(Guid Id, string Email, string Name, DateTime CreatedAt)
+{
+    public static UserResponse From(User entity) =>
+        new(entity.Id, entity.Email, entity.Name, entity.CreatedAt);
+}
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  controllers_route_only: true
+  services_have_interfaces: true
+  dtos_validated: true
+  entities_not_returned_directly: true
+  ef_core_async_used: true
+  overall: pass | fail
+\`\`\``,
+    },
+
+    // ── RUBY ──
+    'ruby': {
+      'rails': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - rails
+  - ruby
+severity: soft
+triggers:
+  - "Rails"
+  - "backend"
+  - "controller"
+  - "model"
+  - "service"
+description: >
+  Use before writing any Rails backend code. Enforces skinny controllers,
+  service objects for business logic, strong parameters, serializer patterns,
+  and ActiveRecord best practices.
+---
+
+# Backend Patterns — Ruby on Rails
+
+**Controllers route. Service objects work. Models store. Never mix.**
+
+---
+
+## Controller Pattern
+
+\`\`\`ruby
+# Controllers: params, call service, respond
+# Never: business logic, complex queries
+
+class Api::V1::UsersController < ApplicationController
+  before_action :authenticate_user!
+
+  def show
+    user = UserService.find(params[:id], current_user)
+    render json: UserSerializer.new(user), status: :ok
+  end
+
+  def create
+    user = UserService.create(user_params)
+    render json: UserSerializer.new(user), status: :created
+  end
+
+  private
+
+  def user_params
+    params.require(:user).permit(:email, :password, :name)
+  end
+end
+\`\`\`
+
+---
+
+## Service Object Pattern
+
+\`\`\`ruby
+class UserService
+  def self.find(id, requesting_user)
+    user = User.find(id)
+    raise ForbiddenError unless requesting_user.admin? || requesting_user.id == user.id
+    user
+  end
+
+  def self.create(params)
+    User.create!(params)
+  rescue ActiveRecord::RecordNotUnique
+    raise ConflictError, "Email already in use"
+  end
+end
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  controllers_are_skinny: true
+  service_objects_for_logic: true
+  strong_parameters_used: true
+  serializers_hide_sensitive: true
+  models_not_returned_raw: true
+  overall: pass | fail
+\`\`\``,
+      'sinatra': null,
+    },
+
+    // ── PHP ──
+    'php': {
+      'laravel': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - laravel
+  - php
+severity: soft
+triggers:
+  - "Laravel"
+  - "backend"
+  - "controller"
+  - "service"
+  - "Eloquent"
+description: >
+  Use before writing any Laravel backend code. Enforces controller/service
+  separation, FormRequest validation, API Resource responses, and Eloquent
+  best practices.
+---
+
+# Backend Patterns — Laravel
+
+**Controllers route. Services work. Models store. FormRequests validate.**
+
+---
+
+## Controller Pattern
+
+\`\`\`php
+class UserController extends Controller
+{
+    public function __construct(private UserService $userService) {}
+
+    public function show(string $id): UserResource
+    {
+        return new UserResource($this->userService->findById($id));
+    }
+
+    public function store(CreateUserRequest $request): UserResource
+    {
+        $user = $this->userService->create($request->validated());
+        return (new UserResource($user))->response()->setStatusCode(201);
+    }
+}
+\`\`\`
+
+---
+
+## FormRequest Validation
+
+\`\`\`php
+class CreateUserRequest extends FormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'email' => ['required', 'email', 'unique:users'],
+            'password' => ['required', 'string', 'min:8'],
+            'name' => ['required', 'string', 'max:100'],
+        ];
+    }
+}
+\`\`\`
+
+---
+
+## API Resource (Response DTO)
+
+\`\`\`php
+class UserResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id' => $this->id,
+            'email' => $this->email,
+            'name' => $this->name,
+            'created_at' => $this->created_at,
+            // password_hash NEVER included
+        ];
+    }
+}
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  controllers_route_only: true
+  form_requests_validate: true
+  api_resources_for_responses: true
+  service_has_business_logic: true
+  eloquent_not_in_controllers: true
+  overall: pass | fail
+\`\`\``,
+      'symfony': null,
+    },
+
+    // ── KOTLIN ──
+    'kotlin': {
+      '_default': null, // will use java/spring-boot adapted
+    },
+
+    // ── ELIXIR ──
+    'elixir': {
+      '_default': `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - phoenix
+  - elixir
+severity: soft
+triggers:
+  - "Phoenix"
+  - "Elixir"
+  - "backend"
+  - "context"
+  - "controller"
+  - "Ecto"
+description: >
+  Use before writing any Phoenix backend code. Enforces context boundaries,
+  changeset validation, controller/context separation, and Ecto query patterns.
+---
+
+# Backend Patterns — Phoenix
+
+**Controllers route. Contexts work. Schemas store. Changesets validate.**
+
+---
+
+## Context Pattern
+
+\`\`\`elixir
+# Contexts encapsulate business logic — controllers never call Repo directly
+
+defmodule MyApp.Accounts do
+  alias MyApp.Accounts.User
+  alias MyApp.Repo
+
+  def get_user!(id), do: Repo.get!(User, id)
+
+  def create_user(attrs) do
+    %User{}
+    |> User.changeset(attrs)
+    |> Repo.insert()
+  end
+end
+\`\`\`
+
+---
+
+## Controller Pattern
+
+\`\`\`elixir
+defmodule MyAppWeb.UserController do
+  use MyAppWeb, :controller
+
+  alias MyApp.Accounts
+
+  def show(conn, %{"id" => id}) do
+    user = Accounts.get_user!(id)
+    render(conn, :show, user: user)
+  end
+
+  def create(conn, %{"user" => user_params}) do
+    case Accounts.create_user(user_params) do
+      {:ok, user} ->
+        conn |> put_status(:created) |> render(:show, user: user)
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> render(:error, changeset: changeset)
+    end
+  end
+end
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  controllers_call_contexts_only: true
+  contexts_encapsulate_logic: true
+  changesets_validate_input: true
+  repo_not_called_in_controllers: true
+  overall: pass | fail
+\`\`\``,
+    },
+  };
+
+  // Try exact match, then _default, then generate generic
+  let content = null;
+  if(stackPatterns[L] && stackPatterns[L][B]) content = stackPatterns[L][B];
+  if(!content && stackPatterns[L] && stackPatterns[L]['_default']) content = stackPatterns[L]['_default'];
+  if(!content) content = genGenericBackendPatterns(L,B,orm,ext);
+  return content;
+}
+
+function genGenericBackendPatterns(L,B,orm,ext){
+  return `---
+name: backend-patterns
+version: 1.0.0
+category: backend
+stack:
+  - ${B}
+  - ${L}
+severity: soft
+triggers:
+  - "${B}"
+  - "backend"
+  - "API"
+  - "service"
+  - "controller"
+description: >
+  Use before writing any ${B} backend code. Enforces layered architecture,
+  DTO validation, service/handler separation, ${orm} patterns, and error
+  handling conventions.
+---
+
+# Backend Patterns — ${B}
+
+**Handlers/Controllers route. Services work. Repositories store. Never mix.**
+
+---
+
+## Core Rules
+
+1. **Layered architecture:** handler/controller -> service -> repository
+2. **All request inputs validated** before reaching service layer
+3. **Response DTOs** hide sensitive fields — never return raw entities
+4. **Cursor-based pagination** — never offset
+5. **Errors** use consistent shape: { code, message, statusCode }
+6. **Cross-domain access** goes through service interfaces, not direct DB calls
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+backend_audit:
+  skill: backend-patterns
+  handlers_route_only: true
+  service_has_business_logic: true
+  inputs_validated: true
+  response_hides_sensitive: true
+  entities_not_returned_directly: true
+  errors_consistent_shape: true
+  overall: pass | fail
+\`\`\``;
+}
+
+// ── Stack-specific: frontend-patterns ──────────────────────────────────
+function genFrontendPatterns(){
+  const {L,F}=G();
+  if(F==='none') return null;
+
+  const jsxFrameworks = ['nextjs','react-vite','remix','solid','astro'];
+  const isJSX = jsxFrameworks.includes(F) && ['typescript','javascript'].includes(L);
+  const isVue = F==='vue-nuxt';
+  const isSvelte = F==='svelte';
+  const isServerTemplate = ['thymeleaf','django-templates','jinja','blade','erb','hotwire','livewire','htmx','templ','leaf','phoenix-liveview-fe'].includes(F);
+
+  if(isJSX){
+    const fwName = {nextjs:'Next.js',['react-vite']:'React+Vite',remix:'Remix',solid:'SolidStart',astro:'Astro'}[F]||F;
+    return `---
+name: frontend-patterns
+version: 1.0.0
+category: frontend
+stack:
+  - ${F}
+  - ${L}
+severity: soft
+triggers:
+  - "${fwName}"
+  - "React"
+  - "component"
+  - "page"
+  - "hook"
+  - "frontend"
+description: >
+  Use before writing any ${fwName} code. Enforces component structure,
+  hook patterns, data fetching conventions, and form handling.
+---
+
+# Frontend Patterns — ${fwName}
+
+**Components render. Hooks manage state. Services fetch data.**
+
+---
+
+## Component Structure
+
+\`\`\`tsx
+// 1. Imports (framework → external → internal → types)
+// 2. Types/interfaces
+// 3. Component function
+//    - Hooks at top (context → state → refs → queries)
+//    - Handlers (prefix: handle*)
+//    - JSX return at bottom
+
+interface UserCardProps {
+  user: User
+  onEdit: (id: string) => void
+}
+
+export function UserCard({ user, onEdit }: UserCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  function handleToggle() {
+    setIsExpanded(prev => !prev)
+  }
+
+  return (
+    <div className="border rounded-lg p-4">
+      <h3 className="font-semibold">{user.name}</h3>
+      {isExpanded && <p className="text-sm text-muted-foreground">{user.email}</p>}
+      <button onClick={handleToggle}>
+        {isExpanded ? 'Less' : 'More'}
+      </button>
+    </div>
+  )
+}
+\`\`\`
+
+---
+
+## Custom Hook Pattern
+
+\`\`\`ts
+// One hook = one concern. Name: use{Noun} or use{Verb}{Noun}
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => api.get<User[]>('/api/v1/users'),
+  })
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateUserDto) => api.post('/api/v1/users', data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+  })
+}
+\`\`\`
+
+---
+
+## Data Fetching Rules
+
+\`\`\`ts
+// Never fetch in useEffect — use query library
+// Query keys: ['entity'] or ['entity', id] or ['entity', { filters }]
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+frontend_audit:
+  skill: frontend-patterns
+  components_follow_structure: true
+  hooks_extracted_for_logic: true
+  no_fetch_in_useeffect: true
+  forms_validated: true
+  error_states_handled: true
+  loading_states_present: true
+  overall: pass | fail
+\`\`\``;
+  }
+
+  if(isServerTemplate){
+    return `---
+name: frontend-patterns
+version: 1.0.0
+category: frontend
+stack:
+  - ${F}
+  - ${L}
+severity: soft
+triggers:
+  - "${F}"
+  - "template"
+  - "view"
+  - "frontend"
+  - "UI"
+description: >
+  Use before writing any ${F} template code. Enforces template structure,
+  partial/component reuse, proper escaping, and progressive enhancement.
+---
+
+# Frontend Patterns — ${F}
+
+**Templates render. Partials compose. Server drives state.**
+
+---
+
+## Core Rules
+
+1. **Escape all user-generated content** in templates — prevent XSS
+2. **Extract repeated markup** into partials/components
+3. **Keep logic out of templates** — compute in controller/service, pass to template
+4. **Progressive enhancement** — forms work without JS, enhance with JS
+5. **Accessible markup** — semantic HTML, ARIA labels, keyboard navigation
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+frontend_audit:
+  skill: frontend-patterns
+  user_content_escaped: true
+  partials_for_reuse: true
+  no_logic_in_templates: true
+  forms_work_without_js: true
+  semantic_html_used: true
+  overall: pass | fail
+\`\`\``;
+  }
+
+  // Generic fallback
+  return `---
+name: frontend-patterns
+version: 1.0.0
+category: frontend
+stack:
+  - ${F}
+  - ${L}
+severity: soft
+triggers:
+  - "${F}"
+  - "frontend"
+  - "UI"
+  - "component"
+description: >
+  Use before writing any ${F} frontend code. Enforces component structure,
+  state management patterns, and UI conventions.
+---
+
+# Frontend Patterns — ${F}
+
+**Components render. State is managed. Side effects are isolated.**
+
+---
+
+## Core Rules
+
+1. Components are small, focused, and reusable
+2. State lives at the lowest necessary level
+3. Side effects are explicit and isolated
+4. All user input is validated before submission
+5. Loading and error states are always handled
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+frontend_audit:
+  skill: frontend-patterns
+  components_focused: true
+  state_managed_properly: true
+  error_states_handled: true
+  loading_states_present: true
+  inputs_validated: true
+  overall: pass | fail
+\`\`\``;
+}
+
+// ── Stack-specific: ui-intelligence ────────────────────────────────────
+function genUiIntelligence(){
+  const {F,L}=G();
+  if(F==='none') return null;
+  const jsxFrameworks = ['nextjs','react-vite','remix','solid','astro'];
+  const isJSX = jsxFrameworks.includes(F) && ['typescript','javascript'].includes(L);
+
+  if(isJSX){
+    // Return the full JSX/Tailwind version (close to original)
+    return `---
+name: ui-intelligence
+version: 1.0.0
+category: ui
+stack:
+  - ${F}
+  - ${L}
+severity: hard
+triggers:
+  - "component"
+  - "page"
+  - "layout"
+  - "JSX"
+  - "styling"
+  - "UI"
+description: >
+  Use before writing ANY frontend component, page, or layout.
+  Enforces human-grade visual quality by banning 12 AI-default anti-patterns.
+  Handoff is BLOCKED until self-audit passes.
+---
+
+# UI Intelligence
+
+**The interface you ship is a trust signal. AI-default UI destroys that trust.**
+
+---
+
+## The 12 Banned Patterns
+
+1. **No gradient backgrounds** on layout regions — use bg-muted/40 or bg-background
+2. **No glassmorphism** — use bg-card border shadow-sm
+3. **No oversized radius** — cards: rounded-lg max, buttons: rounded-md max
+4. **No gradient CTAs** — use bg-primary text-primary-foreground
+5. **No floating stat cards** as primary layout — use inline stat rows
+6. **No icon+colored badge overload** — icons use text-muted-foreground
+7. **No decorative micro-labels** — trust the heading
+8. **No hero glow/blob effects** — use real product content
+9. **No icon-only sidebar** as default — labeled nav, w-56
+10. **No shadow stacking** — cards: shadow-sm, modals only: shadow-lg
+11. **No decorative accent borders** — accent = semantic state only
+12. **No decorative absolute DOM nodes** — use CSS background-image
+
+---
+
+## Typography System
+
+\`\`\`
+h1: text-3xl font-bold tracking-tight
+h2: text-2xl font-semibold
+h3: text-lg font-semibold
+h4: text-base font-medium
+body: text-sm (app) or text-base (marketing)
+caption: text-xs text-muted-foreground
+\`\`\`
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+ui_audit:
+  skill: ui-intelligence
+  component: <ComponentName>
+  checks:
+    no_gradient_backgrounds: true
+    no_glassmorphism: true
+    border_radius_within_limits: true
+    no_gradient_ctas: true
+    no_floating_stat_cards: true
+    no_icon_badge_overload: true
+    no_decorative_microlabels: true
+    no_hero_glow_blobs: true
+    sidebar_has_text_labels: true
+    shadow_not_stacked: true
+    accent_borders_semantic: true
+    no_decorative_dom_nodes: true
+  overall: pass | fail
+  blocked: false
+\`\`\``;
+  }
+
+  // Non-JSX but has a frontend
+  return `---
+name: ui-intelligence
+version: 1.0.0
+category: ui
+stack:
+  - ${F}
+  - ${L}
+severity: hard
+triggers:
+  - "UI"
+  - "template"
+  - "view"
+  - "layout"
+  - "styling"
+description: >
+  Use before writing ANY UI template, view, or layout. Enforces human-grade
+  visual quality. AI-generated UI has recognizable anti-patterns — this skill
+  prevents them. Handoff BLOCKED until self-audit passes.
+---
+
+# UI Intelligence
+
+**The interface you ship is a trust signal. AI-default UI destroys that trust.**
+
+---
+
+## Core Visual Rules
+
+1. **No gratuitous gradients** — solid backgrounds with subtle borders
+2. **No excessive shadows** — one elevated element per view max
+3. **No oversized rounded corners** — keep radius subtle
+4. **No decorative elements** that serve no function
+5. **Consistent spacing scale** — use your framework's spacing system
+6. **Typography hierarchy** — max 3-4 font sizes per page
+7. **Color restraint** — max 2 accent colors + neutrals
+8. **Semantic HTML** — correct elements, ARIA labels, keyboard accessible
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+ui_audit:
+  skill: ui-intelligence
+  view: <ViewName>
+  checks:
+    no_gratuitous_gradients: true
+    shadow_restraint: true
+    radius_consistent: true
+    no_decorative_clutter: true
+    spacing_consistent: true
+    typography_hierarchy: true
+    color_restraint: true
+    semantic_html: true
+  overall: pass | fail
+  blocked: false
+\`\`\``;
+}
+
+// ── Stack-specific: tdd-workflow ───────────────────────────────────────
+function genTddWorkflow(){
+  const {L,testFw,ext,testExt}=G();
+  const examples = {
+    java: `\`\`\`java
+// JUnit 5 + Mockito
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @Mock UserRepository userRepository;
+    @InjectMocks UserService userService;
+
+    @Test
+    void findById_shouldReturnUser_whenExists() {
+        // Arrange
+        var user = User.builder().id(UUID.randomUUID()).email("test@test.com").build();
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+
+        // Act
+        var result = userService.findById(user.getId());
+
+        // Assert
+        assertThat(result.email()).isEqualTo("test@test.com");
+    }
+
+    @Test
+    void findById_shouldThrow_whenNotExists() {
+        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        assertThrows(ResourceNotFoundException.class,
+            () -> userService.findById(UUID.randomUUID()));
+    }
+}
+\`\`\``,
+    python: `\`\`\`python
+# pytest
+class TestUserService:
+    async def test_find_by_id_returns_user(self, user_service, mock_repo):
+        # Arrange
+        user = User(id=uuid4(), email="test@test.com")
+        mock_repo.find_by_id.return_value = user
+
+        # Act
+        result = await user_service.find_by_id(user.id)
+
+        # Assert
+        assert result.email == "test@test.com"
+
+    async def test_find_by_id_raises_when_not_found(self, user_service, mock_repo):
+        mock_repo.find_by_id.return_value = None
+        with pytest.raises(NotFoundError):
+            await user_service.find_by_id(uuid4())
+\`\`\``,
+    go: `\`\`\`go
+// Go testing + testify
+func TestUserService_FindByID(t *testing.T) {
+    t.Run("returns user when exists", func(t *testing.T) {
+        // Arrange
+        repo := &mockUserRepo{}
+        svc := NewUserService(repo)
+        expected := &User{ID: uuid.New(), Email: "test@test.com"}
+        repo.On("FindByID", mock.Anything, expected.ID).Return(expected, nil)
+
+        // Act
+        result, err := svc.FindByID(context.Background(), expected.ID)
+
+        // Assert
+        require.NoError(t, err)
+        assert.Equal(t, expected.Email, result.Email)
+    })
+}
+\`\`\``,
+    rust: `\`\`\`rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn find_by_id_returns_user() {
+        // Arrange
+        let repo = MockUserRepo::new();
+        let id = Uuid::new_v4();
+        repo.expect_find_by_id().returning(move |_| Ok(Some(User { id, email: "test@test.com".into() })));
+        let svc = UserService::new(repo);
+
+        // Act
+        let result = svc.find_by_id(id).await.unwrap();
+
+        // Assert
+        assert_eq!(result.email, "test@test.com");
+    }
+}
+\`\`\``,
+    ruby: `\`\`\`ruby
+# RSpec
+RSpec.describe UserService do
+  describe '.find' do
+    it 'returns user when exists' do
+      user = create(:user, email: 'test@test.com')
+      result = described_class.find(user.id, user)
+      expect(result.email).to eq('test@test.com')
+    end
+
+    it 'raises NotFound when missing' do
+      expect { described_class.find('nonexistent', admin) }
+        .to raise_error(ActiveRecord::RecordNotFound)
+    end
+  end
+end
+\`\`\``,
+    php: `\`\`\`php
+// Pest / PHPUnit
+it('returns user when exists', function () {
+    $user = User::factory()->create(['email' => 'test@test.com']);
+    $result = app(UserService::class)->findById($user->id);
+    expect($result->email)->toBe('test@test.com');
+});
+
+it('throws when user not found', function () {
+    app(UserService::class)->findById('nonexistent');
+})->throws(ResourceNotFoundException::class);
+\`\`\``,
+    elixir: `\`\`\`elixir
+# ExUnit
+defmodule MyApp.AccountsTest do
+  use MyApp.DataCase
+
+  describe "get_user!/1" do
+    test "returns user when exists" do
+      user = insert(:user, email: "test@test.com")
+      result = Accounts.get_user!(user.id)
+      assert result.email == "test@test.com"
+    end
+
+    test "raises when not found" do
+      assert_raise Ecto.NoResultsError, fn ->
+        Accounts.get_user!(Ecto.UUID.generate())
+      end
+    end
+  end
+end
+\`\`\``,
+  };
+
+  // For TS/JS use the existing Vitest examples
+  const tsExample = `\`\`\`ts
+// Vitest
+describe('UserService', () => {
+  describe('findById', () => {
+    it('should return user when id exists', async () => {
+      // Arrange
+      const mockUser = { id: '1', email: 'test@test.com' }
+      mockRepo.findOneOrFail.mockResolvedValue(mockUser)
+      // Act
+      const result = await service.findById('1')
+      // Assert
+      expect(result).toEqual(mockUser)
+    })
+
+    it('should throw NotFoundException when not found', async () => {
+      mockRepo.findOneOrFail.mockRejectedValue(new Error())
+      await expect(service.findById('x')).rejects.toThrow(NotFoundException)
+    })
+  })
+})
+\`\`\``;
+
+  const testExample = examples[L] || tsExample;
+
+  return `---
+name: tdd-workflow
+version: 1.0.0
+category: testing
+stack:
+  - always
+severity: hard
+triggers:
+  - "writing logic"
+  - "new function"
+  - "implementing a service"
+  - "adding a feature"
+description: >
+  Use before writing any testable logic. Enforces RED-GREEN-REFACTOR:
+  write the failing test first, confirm it fails, implement the minimum
+  to pass, then refactor. Code written before tests will be deleted.
+---
+
+# TDD Workflow
+
+**Write the test first. Always. The test is the spec.**
+
+---
+
+## Testing Framework: ${testFw}
+
+Test file naming: \`*${testExt}\`
+
+---
+
+## The RED-GREEN-REFACTOR Cycle
+
+\`\`\`
+RED:    Write the test. Run it. Confirm it FAILS.
+GREEN:  Write MINIMUM code to pass. Ugly is fine. Minimal is required.
+REFACTOR: Clean implementation. Tests must still pass.
+\`\`\`
+
+**Hard rule: Code written before the failing test is deleted.**
+
+---
+
+## Test Structure: Arrange / Act / Assert
+
+${testExample}
+
+---
+
+## What to Test
+
+**Test behavior, not implementation.**
+
+Every public method/function gets tests for:
+- Happy path (correct inputs, expected output)
+- Edge cases (empty, null, zero, max values)
+- Error cases (invalid input, dependency failures)
+- Boundary conditions (exactly at limits)
+
+---
+
+## Coverage Requirements
+
+Minimum overall: set in \`project/CONSTRAINTS.md\`
+
+Critical paths requiring 100%:
+- Auth flows (register, login, refresh, logout)
+- Payment flows (charge, refund, webhook)
+- Data deletion flows
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+tdd_audit:
+  skill: tdd-workflow
+  tests_written_before_code: true
+  red_confirmed: true
+  green_achieved_with_minimum_code: true
+  refactor_done_separately: true
+  all_tests_passing: true
+  critical_paths_at_100: true
+  overall_coverage_meets_threshold: true
+  overall: pass | fail
+\`\`\``;
+}
+
+// ── Stack-specific: security-review ────────────────────────────────────
+function genSecurityReview(){
+  const {L,B}=G();
+  const fwChecklist = {
+    java: `
+## Spring Boot Security Checklist
+
+\`\`\`java
+// Security config
+@Bean
+public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    http
+        .csrf(csrf -> csrf.disable()) // only for stateless JWT APIs
+        .cors(cors -> cors.configurationSource(corsConfig()))
+        .sessionManagement(sm -> sm.sessionCreationPolicy(STATELESS))
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers("/api/v1/auth/**").permitAll()
+            .anyRequest().authenticated()
+        );
+    return http.build();
+}
+
+// Global validation
+@Validated on all controllers
+@Valid on all @RequestBody parameters
+
+// Rate limiting: use bucket4j or resilience4j
+\`\`\``,
+    python: `
+## FastAPI / Django Security Checklist
+
+\`\`\`python
+# CORS
+app.add_middleware(CORSMiddleware, allow_origins=[settings.FRONTEND_URL], allow_credentials=True)
+
+# Rate limiting: use slowapi or django-ratelimit
+# Input validation: Pydantic models or Django forms — never raw request data
+# SQL: always use ORM queries or parameterized raw SQL
+# File uploads: validate content type by reading magic bytes, not extension
+\`\`\``,
+    go: `
+## Go Security Checklist
+
+\`\`\`go
+// CORS: use rs/cors middleware with explicit origins
+// Rate limiting: use golang.org/x/time/rate or tollbooth
+// Input validation: validate all struct fields before processing
+// SQL: always use parameterized queries ($1, $2) — never fmt.Sprintf
+// Context: always pass context.Context for cancellation/timeout
+\`\`\``,
+    default: '',
+  };
+
+  const extra = fwChecklist[L] || fwChecklist['default'];
+
+  return `---
+name: security-review
+version: 1.0.0
+category: security
+stack:
+  - always
+severity: hard
+triggers:
+  - "auth"
+  - "authentication"
+  - "payment"
+  - "data mutation"
+  - "user data"
+  - "file upload"
+description: >
+  Use before any auth, payment, data mutation, or file I/O implementation.
+  OWASP Top 10 checklist enforced. Critical findings block handoff.
+---
+
+# Security Review
+
+**Security is not a feature you add at the end. It is a constraint you build within.**
+
+---
+
+## OWASP Top 10 Checklist
+
+### A01 — Broken Access Control
+- Every endpoint protected at middleware level
+- userId always from auth token — never from request body
+- Resource access verified: users access only their own data
+- Admin routes require role check, not just authentication
+- CORS with explicit allowed origins (no wildcard in prod)
+
+### A02 — Cryptographic Failures
+- Passwords hashed with bcrypt (cost >= 12) or argon2
+- JWT secret is random, min 32 chars, from env var
+- Sensitive data encrypted at rest
+- HTTPS enforced in production
+- No secrets in code, logs, or error messages
+
+### A03 — Injection
+- No raw SQL — all through ORM or parameterized queries
+- All inputs validated before processing
+- File uploads: type, size, filename sanitized
+- No eval() or dynamic code execution with user input
+
+### A04 — Insecure Design
+- Sensitive operations require re-authentication
+- Rate limiting on auth endpoints
+- Account lockout after N failed attempts
+- Reset tokens expire (max 15 minutes)
+
+### A05-A10
+- No default credentials
+- Stack traces not exposed in production
+- Security headers set (HSTS, CSP, X-Frame-Options)
+- Dependencies scanned for vulnerabilities
+- JWT validated on every request (signature + expiry)
+- Refresh token rotation with old token invalidation
+- Webhook signatures verified
+- Auth events logged
+${extra}
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+security_audit:
+  skill: security-review
+  scope: <what was reviewed>
+  owasp_checks:
+    broken_access_control: pass | fail | n/a
+    cryptographic_failures: pass | fail | n/a
+    injection: pass | fail | n/a
+    insecure_design: pass | fail | n/a
+    security_misconfiguration: pass | fail | n/a
+    vulnerable_components: pass | fail | n/a
+    auth_failures: pass | fail | n/a
+    integrity_failures: pass | fail | n/a
+    logging_monitoring: pass | fail | n/a
+    ssrf: pass | fail | n/a
+  critical_findings: []
+  overall: pass | fail
+  blocked: false
+\`\`\``;
+}
+
+// ── Stack-agnostic skills (included for all stacks) ───────────────────
+function genWorkflowShipFaster(){
+  const {L,ext}=G();
+  return `---
+name: workflow-ship-faster
+version: 1.0.0
+category: execution
+stack:
+  - always
+severity: hard
+triggers:
+  - "starting a task"
+  - "implement"
+  - "write the code"
+description: >
+  Use before any implementation task. Defines the execution loop: read first,
+  plan in text, one unit of work at a time, verify before claiming done,
+  commit atomically.
+---
+
+# Workflow: Ship Faster
+
+**Faster shipping comes from never having to undo. Not from moving faster.**
+
+---
+
+## The Execution Loop
+
+\`\`\`
+1. READ FIRST — read every file you will touch
+2. PLAN IN TEXT — state approach before writing code
+3. WRITE TESTS FIRST — RED, then implement GREEN
+4. IMPLEMENT — one file at a time. 5+ files = split the task
+5. VERIFY — run tests. Failures are fixed now, not later
+6. COMMIT — atomic, conventional, immediately
+7. UPDATE LOG — set task status, write summary
+\`\`\`
+
+## Anti-Drift Rules
+
+- **Scope Lock:** implement EXACTLY what the task specifies
+- **No Speculative Code:** YAGNI. Always
+- **No Refactoring During Implementation:** log it, move on
+- **Strict Types:** no \`any\`, no type suppression, no ignoring errors
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+execution_audit:
+  skill: workflow-ship-faster
+  task: <description>
+  read_before_write: true
+  plan_stated_before_code: true
+  tests_written_first: true
+  tests_passing: true
+  scope_locked: true
+  no_speculative_code: true
+  committed_atomically: true
+  log_updated: true
+  overall: pass | fail
+\`\`\``;
+}
+
+function genTeamOrchestration(){
+  const {B,F}=G();
+  const agents = [];
+  agents.push('Architect: docs/ / project/ / root config');
+  if(B!=='none') agents.push(`Backend Dev: apps/api/src/ (or src/ for single-app)`);
+  if(F!=='none') agents.push(`Frontend Dev: apps/web/src/ (or src/ for single-app)`);
+  agents.push('Tester: test files (read all, write own domain)');
+  agents.push('Reviewer: read-only — writes only to logs/');
+  agents.push('DevOps: infra/ / .github/ / Dockerfile');
+
+  return `---
+name: team-orchestration
+version: 1.0.0
+category: execution
+stack:
+  - always
+severity: hard
+triggers:
+  - "starting a phase"
+  - "/execute"
+  - "dispatching agents"
+description: >
+  Use before dispatching any agent team. Defines file ownership, parallel
+  dispatch rules, handoff ACK protocol. No phase runs as a single generalist
+  when a specialist team applies.
+---
+
+# Team Orchestration
+
+**A specialist team with explicit ownership produces exceptional output.**
+
+---
+
+## File Ownership
+
+\`\`\`
+${agents.join('\n')}
+\`\`\`
+
+An agent that needs to modify a file outside its ownership must:
+1. Stop
+2. Write a handoff request with the contract
+3. Wait for the owning agent to ACK and make the change
+
+---
+
+## Handoff Protocol
+
+Sending agent writes: FROM, TO, CONTRACT (endpoint shapes, types, errors), ACK_REQUIRED
+Receiving agent writes ACK with: what they understood, what they will build
+Only after ACK → dispatch receiving agent.
+
+---
+
+## Parallel Dispatch Rules
+
+Parallel OK: non-overlapping ownership (Backend ‖ Frontend)
+Never parallel: overlapping files, or any agent + DevOps during deploy
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+team_orchestration_audit:
+  skill: team-orchestration
+  phase: <phase name>
+  file_ownership_respected: true
+  handoffs_logged: true
+  handoff_acks_received: true
+  parallel_dispatch_used: true | false | n/a
+  reviewer_fresh_instance: true | n/a
+  overall: pass | fail
+\`\`\``;
+}
+
+function genAdversarialReview(){
+  return `---
+name: adversarial-review
+version: 1.0.0
+category: security
+stack:
+  - always
+severity: hard
+triggers:
+  - "before handoff"
+  - "task complete"
+  - "ready to review"
+description: >
+  Use before every agent handoff. Runs three adversarial lenses: attacker,
+  skeptical user, production engineer. Critical/High findings block handoff.
+---
+
+# Adversarial Review
+
+**The most dangerous reviewer is the one who wants you to succeed.**
+
+---
+
+## Lens 1 — The Attacker
+- What if every input is malicious? (injection, overflow, prototype pollution)
+- Can I bypass authentication? Is every route protected at middleware level?
+- Can I access other users' data? Is userId from token or request body?
+- Can I cause data loss? Are destructive ops soft-delete first?
+
+## Lens 2 — The Skeptical User
+- Double submit? (loading state + idempotency key)
+- Network drop mid-request? (error state, not white screen)
+- Null API response? (graceful handling, not crash)
+- Back button after action? (consistent state)
+
+## Lens 3 — The Production Engineer
+- N+1 queries hiding in a loop?
+- What fails when a dependency is down?
+- Memory leaks? File handle leaks? Connection leaks?
+- What breaks after 30 days? (token expiry, cron DST)
+
+---
+
+## Severity: Critical/High = BLOCK. Medium = LOG. Low = LOG only.
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+adversarial_audit:
+  skill: adversarial-review
+  scope: <what was reviewed>
+  lenses_run:
+    attacker: true
+    skeptical_user: true
+    production_engineer: true
+  findings:
+    critical: []
+    high: []
+    medium: []
+    low: []
+  all_critical_fixed: true
+  all_high_fixed: true
+  overall: pass | fail
+  blocked: false
+\`\`\``;
+}
+
+function genApiDesign(){
+  const {L,B}=G();
+  if(B==='none') return null;
+
+  return `---
+name: api-design
+version: 1.0.0
+category: backend
+stack:
+  - always
+severity: soft
+triggers:
+  - "API"
+  - "endpoint"
+  - "route"
+  - "REST"
+  - "contract"
+description: >
+  Use before writing any API endpoint. Enforces REST conventions, consistent
+  naming, versioning, error response shapes, and the contract-first principle.
+---
+
+# API Design
+
+**Define the contract first. Build to the contract. Never surprise the consumer.**
+
+---
+
+## URL Conventions
+
+\`\`\`
+Resources: plural nouns, kebab-case
+  /users            not /user, not /getUsers
+  /blog-posts       not /blogPosts
+
+Nesting: max 2 levels deep
+  /users/:id/posts         OK
+  /users/:id/posts/:id/comments/:id    too deep — flatten
+
+Actions: verbs as sub-resources
+  POST /auth/login
+  POST /payments/refund
+  POST /users/:id/archive
+\`\`\`
+
+---
+
+## HTTP Method + Status
+
+\`\`\`
+GET    /resources          -> 200 + array
+GET    /resources/:id      -> 200 + object | 404
+POST   /resources          -> 201 + created object
+PATCH  /resources/:id      -> 200 + updated object
+DELETE /resources/:id      -> 204 No Content
+\`\`\`
+
+---
+
+## Error Shape (consistent everywhere)
+
+\`\`\`json
+{ "code": "USER_NOT_FOUND", "message": "User x not found", "statusCode": 404 }
+\`\`\`
+
+---
+
+## Versioning: /api/v1/ prefix. Only increment on BREAKING changes.
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+api_design_audit:
+  skill: api-design
+  urls_use_plural_nouns: true
+  urls_use_kebab_case: true
+  http_methods_correct: true
+  status_codes_correct: true
+  error_shape_consistent: true
+  versioned: true
+  contract_written_first: true
+  overall: pass | fail
+\`\`\``;
+}
+
+// Simple stack-agnostic skills
+function genSimpleSkill(name, cat, sev, triggers, desc, body, auditYaml){
+  return `---
+name: ${name}
+version: 1.0.0
+category: ${cat}
+stack:
+  - always
+severity: ${sev}
+triggers:
+${triggers.map(t=>`  - "${t}"`).join('\n')}
+description: >
+  ${desc}
+---
+
+${body}
+
+---
+
+## Self-Audit Block
+
+\`\`\`yaml
+${auditYaml}
+\`\`\``;
+}
+
+function genContinuousLearning(){
+  return genSimpleSkill('continuous-learning','meta','soft',
+    ['session start','session end','loading memory'],
+    'Use at START and END of every session. Loads prior decisions from MEMORY.md at start. Writes new learnings at end.',
+    `# Continuous Learning
+
+**Every session makes the next one smarter.**
+
+---
+
+## At Session Start
+1. Read \`.claude/MEMORY.md\`
+2. Note active decisions, constraints, warnings
+3. Apply learned patterns to current work
+
+## At Session End
+1. Review what was built, what broke, what was learned
+2. Write new entries to MEMORY.md
+3. Categories: Decision | Pattern | Mistake+Fix | Constraint | Warning | Preference | Performance
+4. Never delete entries — mark superseded with [SUPERSEDED by #N]`,
+    `learning_audit:
+  skill: continuous-learning
+  memory_read_at_start: true
+  patterns_applied: true
+  new_learnings_written: true
+  overall: pass | fail`);
+}
+
+function genContextDoctor(){
+  return genSimpleSkill('context-doctor','meta','soft',
+    ['long session','context pressure','many files read'],
+    'Use when session exceeds 45 minutes or > 10 large files read. Diagnoses context health and triggers compaction.',
+    `# Context Doctor
+
+**A full context window is a silent degradation. Catch it before quality drops.**
+
+---
+
+## When to Diagnose
+- Session > 45 minutes
+- > 10 large files read
+- Agent responses getting shorter or less accurate
+- Tool calls failing with context errors
+
+## Remediation
+1. Use range reads instead of full-file reads
+2. Summarize findings before reading more files
+3. Dispatch sub-agents for isolated tasks
+4. MCP budget: < 10 tools per agent, < 80 total`,
+    `context_audit:
+  skill: context-doctor
+  session_duration_ok: true
+  range_reads_used: true
+  mcp_budget_respected: true
+  overall: pass | fail`);
+}
+
+function genGitWorkflow(){
+  return genSimpleSkill('git-workflow','git','soft',
+    ['commit','push','branch','PR','pull request'],
+    'Use before every commit and PR. Enforces conventional commits, atomic commits, branch naming.',
+    `# Git Workflow
+
+**The git history is the project's permanent audit trail — make it readable.**
+
+---
+
+## Commit Format
+\`\`\`
+<type>(scope): description
+
+Types: feat, fix, refactor, docs, test, chore, perf, ci
+\`\`\`
+
+## Rules
+- One logical unit per commit — never batch unrelated changes
+- Branch naming: feat/slug, fix/slug, chore/slug
+- Nothing goes to main directly — always PR
+- Atomic commits: each commit compiles and passes tests`,
+    `git_audit:
+  skill: git-workflow
+  conventional_commits: true
+  atomic_commits: true
+  branch_naming: true
+  no_direct_main: true
+  overall: pass | fail`);
+}
+
+function genBrainstorming(){
+  return genSimpleSkill('brainstorming','planning','soft',
+    ['unclear requirements','ambiguous','brainstorm','explore options'],
+    'Use when requirements are ambiguous. Runs structured Socratic refinement before planning begins.',
+    `# Brainstorming
+
+**Ask the right questions before building the wrong thing.**
+
+---
+
+## Process
+1. **Identify gaps** — what is missing or ambiguous in the requirements?
+2. **Ask clarifying questions** — structured, specific, actionable
+3. **Explore alternatives** — at least 2 approaches for each major decision
+4. **Surface constraints** — technical, business, timeline
+5. **Validate understanding** — restate requirements back to the user
+6. **Produce validated brief** — clear enough for /plan to build on`,
+    `brainstorm_audit:
+  skill: brainstorming
+  gaps_identified: true
+  questions_asked: true
+  alternatives_explored: true
+  constraints_surfaced: true
+  understanding_validated: true
+  overall: pass | fail`);
+}
+
+function genWritingPlans(){
+  return genSimpleSkill('writing-plans','planning','soft',
+    ['plan','task breakdown','implementation plan'],
+    'Use when breaking work into tasks. Produces plans with exact file paths, clear ownership, and 2-5 minute granularity.',
+    `# Writing Plans
+
+**A plan with the right task size ships. A plan with wrong granularity stalls.**
+
+---
+
+## Task Properties
+- **Title:** what, not how (verb + noun)
+- **Owner:** which agent
+- **Files:** exact paths that will be created or modified
+- **Depends on:** which tasks must complete first
+- **Acceptance:** how to verify this task is done
+- **Size:** 2-5 minutes of focused work. Bigger = split it.
+
+## Plan Structure
+1. Phase breakdown (Foundation → Auth → Features → Quality → Ship)
+2. Tasks within each phase, ordered by dependency
+3. Parallel opportunities identified
+4. Risk flags on tasks with unknowns`,
+    `plan_audit:
+  skill: writing-plans
+  tasks_have_owners: true
+  tasks_have_file_paths: true
+  tasks_right_granularity: true
+  dependencies_explicit: true
+  overall: pass | fail`);
+}
+
+function genWritingSkills(){
+  return genSimpleSkill('writing-skills','meta','soft',
+    ['new skill','creating a skill'],
+    'Use when creating a new skill. Enforces the skill format spec for consistency.',
+    `# Writing Skills
+
+**A skill that is not loaded automatically is a README nobody reads.**
+
+---
+
+## Required Sections (in order)
+1. Frontmatter (name, version, category, stack, severity, triggers, description)
+2. One-line principle
+3. Why This Exists
+4. When To Use / When NOT To Use
+5. The Rules (imperatives: Do X, Never Y, Always Z)
+6. Anti-Patterns (min 3 pairs with code)
+7. Self-Audit Block (YAML, copy-pasteable)
+8. Composition Rules (REQUIRES / SUGGESTS / CONFLICTS)
+
+## Rules
+- Every code block has a language tag
+- No weasel words: "try to", "consider", "might"
+- severity: hard = blocks handoff when audit fails`,
+    `skill_writing_audit:
+  skill: writing-skills
+  has_frontmatter: true
+  has_principle: true
+  has_anti_patterns: true
+  has_self_audit: true
+  has_composition_rules: true
+  overall: pass | fail`);
+}
+
+function genBuildErrorResolver(){
+  const {testFw,lintTool}=G();
+  return genSimpleSkill('build-error-resolver','execution','soft',
+    ['build failed','type error','compilation error','lint error'],
+    `Use on build failures and type errors. Structured resolution: read error, find root cause, fix at source — never suppress.`,
+    `# Build Error Resolver
+
+**Read the error. Find the root type. Fix at the source. Never suppress.**
+
+---
+
+## Resolution Flow
+1. **Read the FULL error** — not just the first line
+2. **Find the root cause** — trace back from the error to the source
+3. **Fix at the source** — not where it surfaces
+4. **Verify** — rebuild/rerun after each fix
+5. **Never suppress** — no type-ignore, no any cast, no eslint-disable without justification
+
+## Tools: ${testFw}, ${lintTool}`,
+    `build_error_audit:
+  skill: build-error-resolver
+  full_error_read: true
+  root_cause_found: true
+  fixed_at_source: true
+  no_suppressions: true
+  build_passes: true
+  overall: pass | fail`);
+}
+
+function genSystematicDebugging(){
+  return genSimpleSkill('systematic-debugging','execution','soft',
+    ['bug','debugging','issue','broken','not working'],
+    'Use when debugging any issue. Enforces 4-phase process: observe, hypothesize, isolate, fix+verify.',
+    `# Systematic Debugging
+
+**Systematic debugging is faster than random attempts after the second try.**
+
+---
+
+## 4-Phase Process
+
+### Phase 1 — Observe
+- Reproduce the bug reliably
+- Collect: error message, stack trace, logs, input data
+- Identify: when did it start? What changed?
+
+### Phase 2 — Hypothesize
+- List 3+ possible causes, ranked by likelihood
+- For each: what evidence would confirm or eliminate it?
+
+### Phase 3 — Isolate
+- Test one hypothesis at a time
+- Use minimal reproduction (smallest input that triggers the bug)
+- Binary search: comment out code halves to narrow the location
+
+### Phase 4 — Fix + Verify
+- Fix the root cause, not the symptom
+- Write a test that would have caught this bug
+- Verify the fix doesn't break anything else`,
+    `debug_audit:
+  skill: systematic-debugging
+  bug_reproduced: true
+  hypotheses_listed: true
+  root_cause_isolated: true
+  fix_at_root: true
+  regression_test_added: true
+  overall: pass | fail`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERATION
+// ═══════════════════════════════════════════════════════════════════════
+
+function generate(){
+  saveInputs();
+  state.projectName = state.projectName || 'MyProject';
+  const {L,B,F,orm,ext,testFw,lintTool} = G();
+  const db = state.database||'none', deploy = state.deploy||'undecided';
+  const features = state.features||[], projectType = state.projectType||'web-app';
+
+  // ── Config files ──
+  generatedFiles['project/TECH-STACK.md'] = genTechStackMd(L,B,F,db,deploy,features,orm,testFw,lintTool,projectType);
+  generatedFiles['.claude/CLAUDE.md'] = genClaudeMd(L,B,F,projectType,features);
+  generatedFiles['project/BRIEF.md'] = genBriefMd();
+  generatedFiles['DIRECTORY-STRUCTURE.md'] = genDirStructure(L,B,F,ext,projectType);
+
+  // ── Skills: always generated ──
+  generatedFiles['.claude/skills/workflow-ship-faster/SKILL.md'] = genWorkflowShipFaster();
+  generatedFiles['.claude/skills/team-orchestration/SKILL.md'] = genTeamOrchestration();
+  generatedFiles['.claude/skills/adversarial-review/SKILL.md'] = genAdversarialReview();
+  generatedFiles['.claude/skills/tdd-workflow/SKILL.md'] = genTddWorkflow();
+  generatedFiles['.claude/skills/security-review/SKILL.md'] = genSecurityReview();
+  generatedFiles['.claude/skills/continuous-learning/SKILL.md'] = genContinuousLearning();
+  generatedFiles['.claude/skills/context-doctor/SKILL.md'] = genContextDoctor();
+  generatedFiles['.claude/skills/git-workflow/SKILL.md'] = genGitWorkflow();
+  generatedFiles['.claude/skills/brainstorming/SKILL.md'] = genBrainstorming();
+  generatedFiles['.claude/skills/writing-plans/SKILL.md'] = genWritingPlans();
+  generatedFiles['.claude/skills/writing-skills/SKILL.md'] = genWritingSkills();
+  generatedFiles['.claude/skills/build-error-resolver/SKILL.md'] = genBuildErrorResolver();
+  generatedFiles['.claude/skills/systematic-debugging/SKILL.md'] = genSystematicDebugging();
+
+  // ── Skills: conditional ──
+  const bp = genBackendPatterns(); if(bp) generatedFiles['.claude/skills/backend-patterns/SKILL.md'] = bp;
+  const fp = genFrontendPatterns(); if(fp) generatedFiles['.claude/skills/frontend-patterns/SKILL.md'] = fp;
+  const ui = genUiIntelligence(); if(ui) generatedFiles['.claude/skills/ui-intelligence/SKILL.md'] = ui;
+  const api = genApiDesign(); if(api) generatedFiles['.claude/skills/api-design/SKILL.md'] = api;
+
+  // ── Skill format spec ──
+  generatedFiles['.claude/SKILL-FORMAT.md'] = genSkillFormatSpec();
+
+  // ── Render ──
+  renderOutput(L,B,F,db,deploy);
+  showStep(7);
+}
+
+// ── Helper generators ─────────────────────────────────────────────────
+
+function genTechStackMd(L,B,F,db,deploy,features,orm,testFw,lintTool,projectType){
+  let md = `# Tech Stack\n\n> Confirmed technology choices. Claude treats this as source of truth.\n\n---\n\n## Core\n\n| Layer | Choice |\n|---|---|\n| Language | ${L} |\n| Project Type | ${projectType} |\n`;
+  if(B!=='none') md+=`| Backend | ${B} |\n| ORM / Data | ${orm} |\n`;
+  if(F!=='none') md+=`| Frontend | ${F} |\n`;
+  if(db!=='none') md+=`| Database | ${db} |\n`;
+  md+=`\n## Dev Tooling\n\n| Tool | Purpose |\n|---|---|\n| ${BUILD_MAP[L]||'N/A'} | Package manager / build |\n| ${testFw} | Testing |\n| ${lintTool} | Lint + format |\n`;
+  if(features.length) { md+='\n## Features\n\n'; features.forEach(f=>md+=`- ${f}\n`); }
+  md+=`\n## Deployment\n\n| Target | ${deploy} |\n`;
+  return md;
+}
+
+function genClaudeMd(L,B,F,projectType,features){
+  const skillRows = [];
+  skillRows.push('| `workflow-ship-faster` | hard | Every implementation task |');
+  skillRows.push('| `team-orchestration` | hard | Every /execute phase |');
+  skillRows.push('| `adversarial-review` | hard | Every agent handoff |');
+  skillRows.push('| `tdd-workflow` | hard | Every testable function |');
+  if(F!=='none') { skillRows.push('| `ui-intelligence` | hard | Every UI component |'); skillRows.push('| `frontend-patterns` | soft | Frontend code |'); }
+  if(B!=='none') { skillRows.push('| `backend-patterns` | soft | Backend code |'); skillRows.push('| `api-design` | soft | New endpoints |'); }
+  if(features.includes('auth')||features.includes('payments')) skillRows.push('| `security-review` | hard | Auth, payments, mutations |');
+  else skillRows.push('| `security-review` | soft | Data mutations |');
+  skillRows.push('| `continuous-learning` | soft | Session start + end |');
+  skillRows.push('| `context-doctor` | soft | Long sessions |');
+  skillRows.push('| `git-workflow` | soft | Every commit |');
+  skillRows.push('| `brainstorming` | soft | Unclear requirements |');
+  skillRows.push('| `writing-plans` | soft | Task breakdown |');
+  skillRows.push('| `writing-skills` | soft | Creating new skills |');
+  skillRows.push('| `build-error-resolver` | soft | Build failures |');
+  skillRows.push('| `systematic-debugging` | soft | Debugging |');
+
+  return `# CLAUDE.md — Project Brain
+
+> Read this file at every session start.
+
+---
+
+## This Project
+
+**Language:** ${L} | **Backend:** ${B!=='none'?B:'N/A'} | **Frontend:** ${F!=='none'?F:'N/A'} | **Type:** ${projectType}
+
+Read ALL project/ files before planning or building.
+
+---
+
+## Active Skills
+
+| Skill | Severity | When active |
+|---|---|---|
+${skillRows.join('\n')}
+
+---
+
+## Build Pipeline
+
+\`\`\`
+Stage 1 — Intake       Read project/ → gap analysis → ask questions
+Stage 2 — Plan         PLAN.md + ARCHITECTURE.md
+Stage 3 — Foundation   Scaffold + DB schema + base config
+Stage 4 — Features     Phase-by-phase with team orchestration
+Stage 5 — Quality Gate Adversarial review + test coverage
+Stage 6 — Ship         Deploy + PR + logs closed
+\`\`\`
+
+Commands: /plan · /approve · /revise · /execute · /status · /logs · /review
+
+---
+
+## Definition of Done
+
+- [ ] Code compiles with zero errors
+- [ ] Tests written and passing (80%+ coverage)
+- [ ] Skill self-audit passed
+- [ ] Log file updated to DONE
+- [ ] Committed with conventional commit
+`;
+}
+
+function genBriefMd(){
+  return `# Product Brief\n\n## Product Name\n\n${state.projectName}\n\n## One-Line Description\n\n${state.projectDesc||'<!-- Fill in -->'}\n\n## The Problem\n\n<!-- What problem? Who has it? -->\n\n## The Solution\n\n<!-- Core value exchange -->\n\n## Target Users\n\n<!-- Primary user: role, context, pain -->\n\n## Goals\n\n1.\n2.\n3.\n\n## What This Is NOT\n\n-\n-\n`;
+}
+
+function genDirStructure(L,B,F,ext,projectType){
+  let tree = `# Directory Structure\n\n\`\`\`\n/\n├── .claude/\n│   ├── CLAUDE.md\n│   ├── MEMORY.md\n│   ├── SKILL-FORMAT.md\n│   ├── commands/\n│   ├── skills/\n│   │   ├── workflow-ship-faster/SKILL.md\n│   │   ├── team-orchestration/SKILL.md\n│   │   ├── tdd-workflow/SKILL.md\n│   │   ├── adversarial-review/SKILL.md\n│   │   ├── security-review/SKILL.md\n`;
+  if(B!=='none') tree+=`│   │   ├── backend-patterns/SKILL.md\n│   │   ├── api-design/SKILL.md\n`;
+  if(F!=='none') tree+=`│   │   ├── frontend-patterns/SKILL.md\n│   │   ├── ui-intelligence/SKILL.md\n`;
+  tree+=`│   │   ├── git-workflow/SKILL.md\n│   │   ├── continuous-learning/SKILL.md\n│   │   ├── context-doctor/SKILL.md\n│   │   ├── brainstorming/SKILL.md\n│   │   ├── writing-plans/SKILL.md\n│   │   ├── writing-skills/SKILL.md\n│   │   ├── build-error-resolver/SKILL.md\n│   │   └── systematic-debugging/SKILL.md\n│   └── agents/\n├── project/\n│   ├── BRIEF.md\n│   ├── REQUIREMENTS.md\n│   ├── CONVENTIONS.md\n│   ├── CONSTRAINTS.md\n│   └── TECH-STACK.md\n`;
+  if(B!=='none' && F!=='none') tree+=`├── apps/\n│   ├── api/\n│   │   ├── src/\n│   │   └── test/\n│   └── web/\n│       ├── src/\n│       └── public/\n├── packages/\n│   └── shared/\n`;
+  else if(B!=='none') tree+=`├── src/\n│   ├── modules/\n│   ├── common/\n│   └── main.${ext}\n├── test/\n`;
+  else if(F!=='none') tree+=`├── src/\n│   ├── components/\n│   ├── pages/\n│   └── lib/\n├── public/\n`;
+  tree+=`├── docs/\n├── logs/\n│   ├── backend/\n│   ├── frontend/\n│   ├── decisions/\n│   └── inputs/\n├── infra/\n│   ├── docker-compose.yml\n│   └── Makefile\n├── .github/workflows/\n├── .env.example\n├── .gitignore\n└── README.md\n\`\`\`\n`;
+  return tree;
+}
+
+function genSkillFormatSpec(){
+  return `# Skill Format Specification
+
+## Frontmatter (required)
+
+\`\`\`yaml
+---
+name: skill-name
+version: 1.0.0
+category: planning | execution | testing | ui | backend | security | git | meta
+stack:
+  - always | framework-name
+severity: hard | soft
+triggers:
+  - "trigger phrase"
+description: >
+  Start with "Use when". Max 3 sentences.
+---
+\`\`\`
+
+## Body Sections
+1. # Skill Name + one-line principle
+2. ## Why This Exists
+3. ## When To Use / When NOT To Use
+4. ## The Rules (imperatives: Do X, Never Y)
+5. ## Anti-Patterns (min 3 pairs)
+6. ## Self-Audit Block (YAML)
+7. ## Composition Rules (REQUIRES / SUGGESTS / CONFLICTS)
+
+## Rules
+- Every code block has a language tag
+- No weasel words
+- severity: hard + overall: fail = handoff BLOCKED
+`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER OUTPUT
+// ═══════════════════════════════════════════════════════════════════════
+
+function renderOutput(L,B,F,db,deploy){
+  // Summary chips
+  const grid=document.getElementById('summaryGrid'); grid.innerHTML='';
+  [{l:'Project',v:state.projectName||'Unnamed'},{l:'Language',v:L},{l:'Backend',v:B},{l:'Frontend',v:F},{l:'Database',v:db},{l:'Deploy',v:deploy}].forEach(({l,v})=>{
+    const d=document.createElement('div'); d.className='summary-chip';
+    d.innerHTML=`<div class="chip-label">${l}</div><div class="chip-value">${v}</div>`; grid.appendChild(d);
+  });
+
+  // Count and list skills
+  const skillFiles = Object.keys(generatedFiles).filter(k=>k.includes('/skills/'));
+  document.getElementById('skillCount').textContent = skillFiles.length;
+  const list=document.getElementById('skillsList'); list.innerHTML='';
+  skillFiles.forEach(k=>{
+    const name = k.split('/skills/')[1].split('/')[0];
+    const isHard = generatedFiles[k].includes('severity: hard');
+    const s=document.createElement('span'); s.className=`skill-badge ${isHard?'hard':'soft'}`;
+    s.textContent=name; list.appendChild(s);
+  });
+
+  // Config panel
+  const configPanel=document.getElementById('configPanel'); configPanel.innerHTML='';
+  Object.entries(generatedFiles).filter(([k])=>!k.includes('/skills/')).forEach(([k,v])=>renderFile(configPanel,k,v));
+
+  // Hard skills panel
+  const hardPanel=document.getElementById('skillsHardPanel'); hardPanel.innerHTML='';
+  Object.entries(generatedFiles).filter(([k,v])=>k.includes('/skills/')&&v.includes('severity: hard')).forEach(([k,v])=>renderFile(hardPanel,k,v));
+
+  // Soft skills panel
+  const softPanel=document.getElementById('skillsSoftPanel'); softPanel.innerHTML='';
+  Object.entries(generatedFiles).filter(([k,v])=>k.includes('/skills/')&&v.includes('severity: soft')).forEach(([k,v])=>renderFile(softPanel,k,v));
+}
+
+function renderFile(container,filename,content){
+  const d=document.createElement('div'); d.className='output-file';
+  d.innerHTML=`<div class="output-file-header"><span>${filename}</span><button class="copy-btn" onclick="copyFile('${filename.replace(/'/g,"\\'")}')">Copy</button></div><pre>${escapeHtml(content)}</pre>`;
+  container.appendChild(d);
+}
+
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function copyFile(f){ navigator.clipboard.writeText(generatedFiles[f]); showToast('Copied '+f.split('/').pop()); }
+function showToast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ZIP DOWNLOAD
+// ═══════════════════════════════════════════════════════════════════════
+
+async function downloadAll(){
+  const files=Object.entries(generatedFiles);
+  const zip=await createZip(files);
+  const blob=new Blob([zip],{type:'application/zip'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  a.download=`${(state.projectName||'project').toLowerCase().replace(/\s+/g,'-')}-boilerplate.zip`;
+  a.click(); URL.revokeObjectURL(url); showToast('Downloaded ZIP!');
+}
+
+async function createZip(files){
+  const enc=new TextEncoder(), cd=[], lf=[]; let off=0;
+  for(const [name,content] of files){
+    const nb=enc.encode(name), cb=enc.encode(content), crc=crc32(cb);
+    const local=new ArrayBuffer(30+nb.length+cb.length), lv=new DataView(local);
+    lv.setUint32(0,0x04034b50,true); lv.setUint16(4,20,true); lv.setUint16(8,0,true);
+    lv.setUint32(14,crc,true); lv.setUint32(18,cb.length,true); lv.setUint32(22,cb.length,true);
+    lv.setUint16(26,nb.length,true);
+    const la=new Uint8Array(local); la.set(nb,30); la.set(cb,30+nb.length); lf.push(la);
+    const central=new ArrayBuffer(46+nb.length), cv=new DataView(central);
+    cv.setUint32(0,0x02014b50,true); cv.setUint16(4,20,true); cv.setUint16(6,20,true);
+    cv.setUint32(16,crc,true); cv.setUint32(20,cb.length,true); cv.setUint32(24,cb.length,true);
+    cv.setUint16(28,nb.length,true); cv.setUint32(42,off,true);
+    const ca=new Uint8Array(central); ca.set(nb,46); cd.push(ca);
+    off+=la.length;
+  }
+  const cs=cd.reduce((s,c)=>s+c.length,0), end=new ArrayBuffer(22), ev=new DataView(end);
+  ev.setUint32(0,0x06054b50,true); ev.setUint16(8,files.length,true); ev.setUint16(10,files.length,true);
+  ev.setUint32(12,cs,true); ev.setUint32(16,off,true);
+  const r=new Uint8Array(off+cs+22); let p=0;
+  for(const l of lf){r.set(l,p);p+=l.length;} for(const c of cd){r.set(c,p);p+=c.length;}
+  r.set(new Uint8Array(end),p); return r;
+}
+
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++){c^=d[i];for(let j=0;j<8;j++)c=(c>>>1)^(c&1?0xEDB88320:0);}return(c^0xFFFFFFFF)>>>0;}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+renderProgress();
+</script>
+</body>
+</html>

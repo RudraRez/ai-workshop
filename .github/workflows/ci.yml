@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Launchpad CI — Placeholder
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# This workflow is a minimal placeholder. Claude Code Phase 0 (Foundation)
+# replaces it with a full CI pipeline based on your project/TECH-STACK.md.
+#
+# Example: Java + Spring Boot gets Maven + JUnit + Checkstyle
+#          Python + FastAPI gets pip + pytest + Ruff
+#          TypeScript + Next.js gets pnpm + Vitest + ESLint
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  placeholder:
+    name: CI not configured yet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check scaffolding
+        run: |
+          echo "CI pipeline not configured yet."
+          echo "Run 'claude' then '/execute' to scaffold your project."
+          echo "Phase 0 (Foundation) will generate the correct CI for your stack."

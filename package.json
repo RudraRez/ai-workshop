@@ -1,0 +1,13 @@
+{
+  "name": "launchpad-boilerplate",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code-powered project boilerplate. Stack-agnostic — configure via project/TECH-STACK.md.",
+  "scripts": {
+    "setup": "make setup",
+    "dev": "make dev",
+    "test": "make test",
+    "build": "make build",
+    "lint": "make lint"
+  }
+}
