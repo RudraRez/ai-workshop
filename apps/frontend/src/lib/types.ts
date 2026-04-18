@@ -78,3 +78,41 @@ export type Flashcard = {
   hint?: string;
   tags?: string[];
 };
+
+export type FlashcardDeckResponse = {
+  id: string;
+  lessonId: string;
+  title: string;
+  difficulty: "easy" | "medium" | "hard" | "mixed";
+  cardCount: number;
+  cards: Flashcard[];
+  createdAt: string;
+};
+
+export type AudioOverviewResponse = {
+  id: string;
+  lessonId: string;
+  language: string;
+  voiceStyle: "narrator" | "conversational" | "friendly";
+  title: string;
+  transcript: string;
+  audioUrl: string;
+  durationSec: number;
+  sizeBytes: number;
+  createdAt: string;
+};
+
+export type ChatAnswerResponse = {
+  messageId: string;
+  role: "assistant";
+  body: string;
+  createdAt: string;
+  model: string;
+};
+
+export type LessonForAi = {
+  id: string;
+  title: string;
+  context?: string;
+  videoUrl?: string;
+};

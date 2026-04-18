@@ -6,30 +6,62 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Loader2,
   RotateCw,
+  Sparkles,
   WalletCards,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useFlashcards } from "@/lib/hooks";
+import { useFlashcards, useGenerateFlashcards } from "@/lib/hooks";
+import type { Flashcard, LessonForAi } from "@/lib/types";
 
 interface FlashcardsViewProps {
-  lessonId: string;
+  lesson: LessonForAi;
   onBack: () => void;
 }
 
-export function FlashcardsView({ lessonId, onBack }: FlashcardsViewProps) {
-  const { data: cards } = useFlashcards(lessonId);
+export function FlashcardsView({ lesson, onBack }: FlashcardsViewProps) {
+  const { deck, cards, isLoading } = useFlashcards(lesson.id);
+  const {
+    mutate: generate,
+    isPending,
+    error,
+  } = useGenerateFlashcards(lesson);
+
+  const activeCards = (deck?.cards ?? cards) as Flashcard[];
+
   const [idx, setIdx] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   const [mastered, setMastered] = React.useState<Set<string>>(new Set());
   const [review, setReview] = React.useState<Set<string>>(new Set());
 
-  if (!cards || cards.length === 0) return null;
+  React.useEffect(() => {
+    setIdx(0);
+    setFlipped(false);
+    setMastered(new Set());
+    setReview(new Set());
+  }, [deck?.id]);
 
-  const total = cards.length;
-  const current = idx + 1;
+  if (isLoading && activeCards.length === 0) {
+    return <Spinner label="Loading flashcards…" />;
+  }
+
+  if (!activeCards.length) {
+    return (
+      <EmptyState
+        lesson={lesson}
+        onGenerate={(opts) => generate(opts)}
+        isPending={isPending}
+        error={error?.message}
+        onBack={onBack}
+      />
+    );
+  }
+
+  const total = activeCards.length;
+  const current = Math.min(idx + 1, total);
   const pct = (current / total) * 100;
-  const card = cards[idx];
+  const card = activeCards[Math.min(idx, total - 1)];
 
   const goTo = (next: number) => {
     setFlipped(false);
@@ -149,22 +181,179 @@ export function FlashcardsView({ lessonId, onBack }: FlashcardsViewProps) {
             <ChevronRight className="size-4" />
           </button>
         </div>
-        <p className="pt-1 text-center text-xs">
-          <span className="font-semibold text-emerald-400">
-            {mastered.size}
-          </span>{" "}
-          <span className="text-muted-foreground">mastered · </span>
-          <span className="font-semibold text-emerald-400">{remaining}</span>{" "}
-          <span className="text-muted-foreground">remaining</span>
-          {review.size > 0 && (
-            <>
-              <span className="text-muted-foreground"> · </span>
-              <span className="font-semibold text-rose-400">{review.size}</span>{" "}
-              <span className="text-muted-foreground">to review</span>
-            </>
-          )}
+        <div className="flex items-center justify-between pt-1 text-xs">
+          <p>
+            <span className="font-semibold text-emerald-400">
+              {mastered.size}
+            </span>{" "}
+            <span className="text-muted-foreground">mastered · </span>
+            <span className="font-semibold text-emerald-400">{remaining}</span>{" "}
+            <span className="text-muted-foreground">remaining</span>
+            {review.size > 0 && (
+              <>
+                <span className="text-muted-foreground"> · </span>
+                <span className="font-semibold text-rose-400">
+                  {review.size}
+                </span>{" "}
+                <span className="text-muted-foreground">to review</span>
+              </>
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={() => generate({ count: 10, difficulty: "mixed" })}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[11px] font-medium text-violet-200 transition-colors hover:bg-violet-500/20 disabled:opacity-50"
+          >
+            {isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Sparkles className="size-3" />
+            )}
+            New deck
+          </button>
+        </div>
+        {error && (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error.message}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({
+  lesson,
+  onGenerate,
+  isPending,
+  error,
+  onBack,
+}: {
+  lesson: LessonForAi;
+  onGenerate: (opts: {
+    count: number;
+    difficulty: "easy" | "medium" | "hard" | "mixed";
+  }) => void;
+  isPending: boolean;
+  error?: string;
+  onBack: () => void;
+}) {
+  const [count, setCount] = React.useState(10);
+  const [difficulty, setDifficulty] =
+    React.useState<"easy" | "medium" | "hard" | "mixed">("mixed");
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto scrollbar-thin">
+      <div className="flex items-center gap-2 px-3 pt-3 sm:px-4">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to Studio"
+          className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+        <span className="flex size-9 items-center justify-center rounded-lg bg-violet-500 text-white">
+          <WalletCards className="size-[18px]" />
+        </span>
+        <h2 className="text-base font-semibold text-foreground">Flashcards</h2>
+      </div>
+
+      <div className="mx-3 mt-4 rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-600/20 to-violet-900/20 p-5 text-center sm:mx-4">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-violet-500/20 text-violet-300">
+          <Sparkles className="size-5" aria-hidden />
+        </div>
+        <p className="mt-4 text-sm font-semibold text-foreground">
+          Generate flashcards for this lesson
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Gemini will produce a structured deck based on{" "}
+          <span className="font-medium text-foreground">{lesson.title}</span>.
         </p>
       </div>
+
+      <div className="mx-3 mt-4 grid grid-cols-2 gap-2 sm:mx-4">
+        <div>
+          <label
+            htmlFor="fc-count"
+            className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+          >
+            Count
+          </label>
+          <select
+            id="fc-count"
+            value={count}
+            onChange={(e) => setCount(Number(e.target.value))}
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+          >
+            {[5, 8, 10, 15, 20, 25].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label
+            htmlFor="fc-difficulty"
+            className="mb-1 block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+          >
+            Difficulty
+          </label>
+          <select
+            id="fc-difficulty"
+            value={difficulty}
+            onChange={(e) =>
+              setDifficulty(
+                e.target.value as "easy" | "medium" | "hard" | "mixed",
+              )
+            }
+            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="mx-3 mt-4 sm:mx-4">
+        <button
+          type="button"
+          onClick={() => onGenerate({ count, difficulty })}
+          disabled={isPending}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-violet-500 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.01] disabled:opacity-60"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Generating {count} cards…
+            </>
+          ) : (
+            <>
+              <Sparkles className="size-4" />
+              Generate {count} flashcards
+            </>
+          )}
+        </button>
+      </div>
+
+      {error && (
+        <p className="mx-3 mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:mx-4">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Spinner({ label }: { label: string }) {
+  return (
+    <div className="flex h-full items-center justify-center gap-2 text-xs text-muted-foreground">
+      <Loader2 className="size-4 animate-spin" />
+      {label}
     </div>
   );
 }
@@ -212,7 +401,7 @@ function Face({
   return (
     <div
       className={cn(
-        "absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-violet-500/30 p-6 text-center [backface-visibility:hidden]",
+        "absolute inset-0 flex flex-col items-center justify-center overflow-auto rounded-2xl border border-violet-500/30 p-6 text-center [backface-visibility:hidden] scrollbar-thin",
         kind === "question"
           ? "bg-gradient-to-br from-violet-600/35 via-violet-700/25 to-violet-900/30"
           : "bg-gradient-to-br from-violet-500/30 via-fuchsia-700/20 to-indigo-800/30",

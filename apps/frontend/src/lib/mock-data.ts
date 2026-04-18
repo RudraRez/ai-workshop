@@ -15,7 +15,7 @@ export const mockLesson: Lesson = {
   module: "Module 2",
   lessonNumber: 1,
   durationSec: 1650,
-  videoUrl: "",
+  videoUrl: "https://youtu.be/s-Mc26Ytz10",
   thumbnailUrl: "/lesson-thumb.svg",
   summary:
     "Get hands-on with Claude Code by scaffolding your first agent, wiring up tools, and shipping a working automation in under 30 minutes.",

@@ -24,7 +24,7 @@ import {
   topQuickActions,
 } from "@/lib/mock-data";
 import { useTutorMessages, useSendTutorMessage } from "@/lib/hooks";
-import type { QuickAction, TutorMessage } from "@/lib/types";
+import type { LessonForAi, QuickAction, TutorMessage } from "@/lib/types";
 
 const iconMap: Record<string, LucideIcon> = {
   ScrollText,
@@ -36,20 +36,24 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 interface AiTutorTabProps {
-  lessonTitle: string;
+  lesson: LessonForAi;
   remainingMessages: number;
   totalMessages: number;
   onDeeplink?: (target: string) => void;
 }
 
 export function AiTutorTab({
-  lessonTitle,
+  lesson,
   remainingMessages,
   totalMessages,
   onDeeplink,
 }: AiTutorTabProps) {
   const { data: messages } = useTutorMessages("session-preview");
-  const { mutate: send, isPending } = useSendTutorMessage("session-preview");
+  const {
+    mutate: send,
+    isPending,
+    error,
+  } = useSendTutorMessage("session-preview", lesson);
   const [draft, setDraft] = React.useState("");
   const scrollerRef = React.useRef<HTMLDivElement>(null);
 
@@ -71,14 +75,14 @@ export function AiTutorTab({
   );
 
   const handleChipClick = (action: QuickAction) => {
-    if (action.kind === "prompt") submit(`${action.label} for "${lessonTitle}"`);
+    if (action.kind === "prompt") submit(`${action.label} for "${lesson.title}"`);
     else if (action.kind === "deeplink" && action.target) onDeeplink?.(action.target);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <LessonContextCard
-        lessonTitle={lessonTitle}
+        lessonTitle={lesson.title}
         used={totalMessages - remainingMessages}
         total={totalMessages}
       />
@@ -102,6 +106,11 @@ export function AiTutorTab({
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
             Thinking…
+          </div>
+        )}
+        {error && !isPending && (
+          <div className="mx-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error.message}
           </div>
         )}
       </div>

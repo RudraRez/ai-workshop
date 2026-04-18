@@ -1,0 +1,226 @@
+{
+  "info": {
+    "_postman_id": "d1e2c3a4-5678-9abc-def0-123456789abc",
+    "name": "SKEP AI Tutor — MVP",
+    "description": "Covers the three live MVP endpoints: Chat, Flashcards, Audio Overview. Matches doc/API-CONTRACT-MVP.md.\n\nPrereqs: backend running at {{baseUrl}}, `GOOGLE_API_KEY` configured with both Generative Language API and Cloud Text-to-Speech API enabled.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001" },
+    { "key": "lessonId", "value": "lesson-0421" },
+    { "key": "lessonTitle", "value": "Claude Code: Build Your First AI Agent" },
+    { "key": "lessonContext", "value": "Claude Code is Anthropic's official CLI that lets developers build AI agents able to read files, run shell commands, and call MCP tools. In this lesson learners scaffold their first agent, wire up tools, and ship a working automation in under 30 minutes." },
+    { "key": "deckId", "value": "" },
+    { "key": "audioId", "value": "" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.request.headers.has('x-request-id')) {",
+          "  pm.request.headers.add({ key: 'x-request-id', value: (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('req-' + Date.now()) });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Envelope shape', () => {",
+          "  const body = pm.response.json();",
+          "  pm.expect(body).to.have.property('success');",
+          "  pm.expect(body).to.have.property('meta');",
+          "  pm.expect(body.meta).to.have.property('requestId');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Chat — ask the tutor",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "content-type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/chat",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "chat"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"prompt\": \"What is an AI agent?\",\n  \"lessonId\": \"{{lessonId}}\",\n  \"lessonTitle\": \"{{lessonTitle}}\",\n  \"lessonContext\": \"{{lessonContext}}\",\n  \"history\": []\n}"
+        },
+        "description": "Non-streaming Socratic-style answer from Gemini. System prompt is built from lessonTitle + lessonContext."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "const { data } = pm.response.json();",
+              "pm.test('Assistant body present', () => {",
+              "  pm.expect(data).to.have.property('body').that.is.a('string').and.not.empty;",
+              "  pm.expect(data.role).to.eql('assistant');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat — follow-up with history",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "content-type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/chat",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "chat"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"prompt\": \"Give me one concrete example.\",\n  \"lessonId\": \"{{lessonId}}\",\n  \"lessonTitle\": \"{{lessonTitle}}\",\n  \"history\": [\n    { \"role\": \"user\",      \"body\": \"What is an AI agent?\" },\n    { \"role\": \"assistant\", \"body\": \"An AI agent is a system that uses a language model to plan actions and call tools toward a goal.\" }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "Flashcards — generate deck",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "content-type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/flashcards",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "flashcards"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonId\": \"{{lessonId}}\",\n  \"lessonTitle\": \"{{lessonTitle}}\",\n  \"lessonContext\": \"{{lessonContext}}\",\n  \"count\": 8,\n  \"difficulty\": \"mixed\"\n}"
+        },
+        "description": "Gemini returns structured JSON; backend validates + stores the deck in memory, saves `deckId` into the collection variable for the next requests."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "const { data } = pm.response.json();",
+              "pm.test('Deck has cards', () => {",
+              "  pm.expect(data).to.have.property('id');",
+              "  pm.expect(data.cards).to.be.an('array').with.length.above(0);",
+              "});",
+              "pm.collectionVariables.set('deckId', data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flashcards — list by lesson",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/flashcards?lessonId={{lessonId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "flashcards"],
+          "query": [{ "key": "lessonId", "value": "{{lessonId}}" }]
+        }
+      }
+    },
+    {
+      "name": "Flashcards — get one deck",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/flashcards/{{deckId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "flashcards", "{{deckId}}"]
+        },
+        "description": "Run 'Flashcards — generate deck' first so {{deckId}} is populated."
+      }
+    },
+    {
+      "name": "Audio Overview — generate (Hindi)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "content-type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/audio-overviews",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "audio-overviews"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonId\": \"{{lessonId}}\",\n  \"lessonTitle\": \"{{lessonTitle}}\",\n  \"lessonContext\": \"{{lessonContext}}\",\n  \"language\": \"hi-IN\",\n  \"voiceStyle\": \"narrator\"\n}"
+        },
+        "description": "Two-stage pipeline: Gemini writes a Hindi narration script, Google TTS renders MP3. Response `audioUrl` is relative — prepend {{baseUrl}} to play in a browser."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "const { data } = pm.response.json();",
+              "pm.test('Audio URL returned', () => {",
+              "  pm.expect(data).to.have.property('id');",
+              "  pm.expect(data.audioUrl).to.match(/^\\/uploads\\/audio\\/.+\\.mp3$/);",
+              "  pm.expect(data.transcript).to.be.a('string').and.not.empty;",
+              "});",
+              "pm.collectionVariables.set('audioId', data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audio Overview — generate (Tamil, friendly)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "content-type", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/audio-overviews",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "audio-overviews"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonId\": \"{{lessonId}}\",\n  \"lessonTitle\": \"{{lessonTitle}}\",\n  \"language\": \"ta-IN\",\n  \"voiceStyle\": \"friendly\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Audio Overview — list by lesson",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/audio-overviews?lessonId={{lessonId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "audio-overviews"],
+          "query": [{ "key": "lessonId", "value": "{{lessonId}}" }]
+        }
+      }
+    },
+    {
+      "name": "Audio Overview — get one",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/tutor/audio-overviews/{{audioId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "tutor", "audio-overviews", "{{audioId}}"]
+        }
+      }
+    }
+  ]
+}

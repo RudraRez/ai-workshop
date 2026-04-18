@@ -6,6 +6,7 @@ import { TopBar } from "./top-bar";
 import { LessonPlayer } from "./lesson-player";
 import { LessonFooter } from "./lesson-footer";
 import { AiPanel } from "./ai-panel";
+import type { LessonForAi } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { useLesson, useUsage } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,12 @@ export function LessonView() {
 
   const totalMessages = usage.tutorMessages.limit;
   const remaining = totalMessages - usage.tutorMessages.used;
+  const lessonHint = {
+    id: lesson.id,
+    title: lesson.title,
+    context: `${lesson.summary} (Module: ${lesson.module}, Lesson ${lesson.lessonNumber}, duration ${Math.round(lesson.durationSec / 60)} min.)`,
+    videoUrl: lesson.videoUrl || undefined,
+  };
 
   return (
     <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -26,7 +33,10 @@ export function LessonView() {
 
       <div className="flex min-h-0 flex-1">
         <main className="flex min-h-0 flex-1 flex-col">
-          <LessonPlayer durationSec={lesson.durationSec} />
+          <LessonPlayer
+            durationSec={lesson.durationSec}
+            videoUrl={lesson.videoUrl}
+          />
           <LessonFooter
             title={lesson.title}
             module={lesson.module}
@@ -40,8 +50,7 @@ export function LessonView() {
           aria-label="AI Tutor panel"
         >
           <AiPanel
-            lessonId={lesson.id}
-            lessonTitle={lesson.title}
+            lesson={lessonHint}
             remainingMessages={remaining}
             totalMessages={totalMessages}
           />
@@ -57,8 +66,7 @@ export function LessonView() {
       <MobilePanelDrawer
         open={mobilePanelOpen}
         onClose={() => setMobilePanelOpen(false)}
-        lessonId={lesson.id}
-        lessonTitle={lesson.title}
+        lesson={lessonHint}
         remainingMessages={remaining}
         totalMessages={totalMessages}
       />
@@ -94,15 +102,13 @@ function MobilePanelLauncher({
 function MobilePanelDrawer({
   open,
   onClose,
-  lessonId,
-  lessonTitle,
+  lesson,
   remainingMessages,
   totalMessages,
 }: {
   open: boolean;
   onClose: () => void;
-  lessonId: string;
-  lessonTitle: string;
+  lesson: LessonForAi;
   remainingMessages: number;
   totalMessages: number;
 }) {
@@ -149,8 +155,7 @@ function MobilePanelDrawer({
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
           <AiPanel
-            lessonId={lessonId}
-            lessonTitle={lessonTitle}
+            lesson={lesson}
             remainingMessages={remainingMessages}
             totalMessages={totalMessages}
           />

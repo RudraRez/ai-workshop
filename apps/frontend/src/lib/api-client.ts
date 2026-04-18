@@ -1,8 +1,11 @@
 import axios, { AxiosError } from "axios";
 
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api",
-  timeout: 20_000,
+  baseURL: API_BASE_URL,
+  timeout: 120_000,
   headers: { "content-type": "application/json" },
 });
 

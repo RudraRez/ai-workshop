@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/tooltip";
 import { AUDIO_LANGUAGES } from "@/lib/types";
 import { studioGenerators } from "@/lib/mock-data";
-import type { StudioGenerator } from "@/lib/types";
+import type { LessonForAi, StudioGenerator } from "@/lib/types";
 import { AudioOverviewView } from "./audio-overview-view";
 import { FlashcardsView } from "./flashcards-view";
 
@@ -101,14 +101,14 @@ export type StudioView = "grid" | "audio-overview" | "flashcards";
 interface StudioTabProps {
   view: StudioView;
   onChangeView: (view: StudioView) => void;
-  lessonId: string;
+  lesson: LessonForAi;
 }
 
-export function StudioTab({ view, onChangeView, lessonId }: StudioTabProps) {
+export function StudioTab({ view, onChangeView, lesson }: StudioTabProps) {
   if (view === "audio-overview") {
     return (
       <AudioOverviewView
-        lessonId={lessonId}
+        lesson={lesson}
         onBack={() => onChangeView("grid")}
       />
     );
@@ -116,7 +116,7 @@ export function StudioTab({ view, onChangeView, lessonId }: StudioTabProps) {
   if (view === "flashcards") {
     return (
       <FlashcardsView
-        lessonId={lessonId}
+        lesson={lesson}
         onBack={() => onChangeView("grid")}
       />
     );

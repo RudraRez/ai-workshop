@@ -8,9 +8,54 @@ import { formatTime, cn } from "@/lib/utils";
 
 interface LessonPlayerProps {
   durationSec: number;
+  videoUrl?: string;
 }
 
-export function LessonPlayer({ durationSec }: LessonPlayerProps) {
+function extractYoutubeId(input: string): string | null {
+  if (!input) return null;
+  const trimmed = input.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname === "youtu.be") {
+      const id = url.pathname.replace(/^\//, "").split("/")[0];
+      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+    }
+    if (url.hostname.endsWith("youtube.com")) {
+      const v = url.searchParams.get("v");
+      if (v && /^[A-Za-z0-9_-]{11}$/.test(v)) return v;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function LessonPlayer({ durationSec, videoUrl }: LessonPlayerProps) {
+  const youtubeId = React.useMemo(
+    () => (videoUrl ? extractYoutubeId(videoUrl) : null),
+    [videoUrl],
+  );
+
+  if (youtubeId) return <YoutubePlayer videoId={youtubeId} />;
+  return <MockPlayer durationSec={durationSec} />;
+}
+
+function YoutubePlayer({ videoId }: { videoId: string }) {
+  return (
+    <div className="flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-black">
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`}
+        title="Lesson video"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        className="aspect-video h-full max-h-full w-full max-w-full border-0"
+      />
+    </div>
+  );
+}
+
+function MockPlayer({ durationSec }: { durationSec: number }) {
   const [playing, setPlaying] = React.useState(false);
   const [elapsed, setElapsed] = React.useState(783);
 

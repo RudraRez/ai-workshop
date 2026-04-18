@@ -1,25 +1,25 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { resolve } from 'node:path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { TutorModule } from './modules/tutor/tutor.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRootAsync({
+    ServeStaticModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USER', 'postgres'),
-        password: config.get<string>('DB_PASSWORD', 'postgres'),
-        database: config.get<string>('DB_NAME', 'app'),
-        autoLoadEntities: true,
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
-      }),
+      useFactory: (config: ConfigService) => [
+        {
+          rootPath: resolve(config.get<string>('UPLOAD_DIR', './uploads')),
+          serveRoot: '/uploads',
+          serveStaticOptions: { maxAge: 3600_000 },
+        },
+      ],
     }),
+    TutorModule,
   ],
   controllers: [AppController],
   providers: [AppService],

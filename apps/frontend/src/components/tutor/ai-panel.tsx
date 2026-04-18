@@ -6,19 +6,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AiTutorTab } from "./ai-tutor-tab";
 import { StudioTab, type StudioView } from "./studio-tab";
 import { CourseTab } from "./course-tab";
+import type { LessonForAi } from "@/lib/types";
 
 type Tab = "tutor" | "studio" | "course";
 
 interface AiPanelProps {
-  lessonId: string;
-  lessonTitle: string;
+  lesson: LessonForAi;
   remainingMessages: number;
   totalMessages: number;
 }
 
 export function AiPanel({
-  lessonId,
-  lessonTitle,
+  lesson,
   remainingMessages,
   totalMessages,
 }: AiPanelProps) {
@@ -67,22 +66,22 @@ export function AiPanel({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="tutor" className="mt-0 flex flex-1 flex-col">
+      <TabsContent value="tutor" className="mt-0 flex min-h-0 flex-1 flex-col">
         <AiTutorTab
-          lessonTitle={lessonTitle}
+          lesson={lesson}
           remainingMessages={remainingMessages}
           totalMessages={totalMessages}
           onDeeplink={handleDeeplink}
         />
       </TabsContent>
-      <TabsContent value="studio" className="mt-0 flex flex-1 flex-col">
+      <TabsContent value="studio" className="mt-0 flex min-h-0 flex-1 flex-col">
         <StudioTab
           view={studioView}
           onChangeView={setStudioView}
-          lessonId={lessonId}
+          lesson={lesson}
         />
       </TabsContent>
-      <TabsContent value="course" className="mt-0 flex flex-1 flex-col">
+      <TabsContent value="course" className="mt-0 flex min-h-0 flex-1 flex-col">
         <CourseTab />
       </TabsContent>
     </Tabs>
