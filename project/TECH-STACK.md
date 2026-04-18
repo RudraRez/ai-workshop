@@ -10,7 +10,7 @@
 
 | Layer | Choice | Version | Notes |
 |---|---|---|---|
-| Framework | Next.js App Router | 14 | Not Pages Router |
+| Framework | Next.js App Router | latest (15.x) | Not Pages Router |
 | Language | TypeScript | 5.x | strict: true, no any |
 | UI Library | shadcn/ui | latest | Radix primitives, copy-owned |
 | Styling | Tailwind CSS | 3.x | |
@@ -27,7 +27,7 @@
 
 | Layer | Choice | Version | Notes |
 |---|---|---|---|
-| Framework | NestJS | 10 | |
+| Framework | NestJS | latest (11.x) | |
 | Language | TypeScript | 5.x | strict: true |
 | ORM | TypeORM | 0.3.x | repository pattern only |
 | Database | PostgreSQL | 16 | |
@@ -88,8 +88,8 @@
 ```
 /
 ├── apps/
-│   ├── web/              # Next.js 14 App Router
-│   └── api/              # NestJS 10
+│   ├── frontend/         # Next.js (latest) App Router
+│   └── backend/          # NestJS (latest)
 ├── packages/
 │   └── shared/           # Shared types, Zod schemas, utils
 ├── project/              # Your requirements, brief, constraints
